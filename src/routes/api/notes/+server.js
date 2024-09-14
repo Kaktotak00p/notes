@@ -43,14 +43,46 @@ export async function POST({ request }) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
   }
 
-  const { content } = await request.json();
-  const fileName = `${new Date().toISOString()}_${user.username}.md`; // Create a unique file name
+  const { fileName, content } = await request.json();
+
+  // Ensure the filename ends with '.md'
+  const sanitizedFileName = fileName.endsWith('.md') ? fileName : `${fileName}.md`;
+
+  // Ensure the filename is unique
+  const filePath = path.join(vaultDir, sanitizedFileName);
+  if (fs.existsSync(filePath)) {
+    return new Response(JSON.stringify({ error: 'File already exists' }), { status: 400 });
+  }
 
   // Create the markdown content with metadata
-  const markdownContent = `# Note by ${user.username}\n\n${content}\n`;
+  const markdownContent = `# Note by ${user.username}\n\n${content || ''}\n`;
 
   // Write the content to a .md file
-  fs.writeFileSync(path.join(vaultDir, fileName), markdownContent);
+  fs.writeFileSync(filePath, markdownContent);
 
-  return new Response(JSON.stringify({ message: 'Note added', fileName }), { status: 201 });
+  return new Response(JSON.stringify({ message: 'Note added', fileName: sanitizedFileName }), { status: 201 });
 }
+
+export async function PUT({ request }) {
+  const user = authenticate(request);
+  if (!user) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
+  }
+
+  const { fileName, content } = await request.json();
+  
+  // Check if the note file exists
+  const filePath = path.join(vaultDir, fileName);
+  if (!fs.existsSync(filePath)) {
+    return new Response(JSON.stringify({ error: 'Note not found' }), { status: 404 });
+  }
+
+  // Update the markdown content with the new content
+  const updatedContent = `${content}`;
+
+  // Write the updated content to the file
+  fs.writeFileSync(filePath, updatedContent);
+
+  return new Response(JSON.stringify({ message: 'Note updated' }), { status: 200 });
+}
+

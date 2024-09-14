@@ -1,6 +1,6 @@
 <script>
   import { page } from '$app/stores';
-
+  
   let isAuthenticated = false;
 
   $: isAuthenticated = !!$page.data.token;

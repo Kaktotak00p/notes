@@ -1,0 +1,21 @@
+:root {
+  --background-color: black; /* Background color */
+  --main-text-color: white;  /* Main text color */
+  --header1-color: #f5a623;  /* Header 1 color (e.g., orange) */
+  --header2-color: #50e3c2;  /* Header 2 color (e.g., teal) */
+}
+
+body {
+  background-color: var(--background-color);
+  color: var(--main-text-color);
+  margin: 0;
+  font-family: Arial, sans-serif;
+}
+
+h1 {
+  color: var(--header1-color);
+}
+
+h2 {
+  color: var(--header2-color);
+}

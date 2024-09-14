@@ -1,5 +1,8 @@
 <script>
   import { goto } from '$app/navigation';
+  import '../../global.css';
+  import './login.css';
+
   let username = '';
   let password = '';
 
@@ -21,8 +24,8 @@
 </script>
 
 <form on:submit|preventDefault={login}>
-  <input type="text" placeholder="Username" bind:value={username} />
-  <input type="password" placeholder="Password" bind:value={password} />
-  <button type="submit">Login</button>
+  <input type="text" placeholder="Username" bind:value={username} class="input-field" />
+  <input type="password" placeholder="Password" bind:value={password} class="input-field" />
+  <button type="submit" class="submit-btn">Login</button>
 </form>
 
