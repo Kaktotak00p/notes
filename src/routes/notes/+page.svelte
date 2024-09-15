@@ -1,8 +1,12 @@
 <script>
   import { onMount } from 'svelte';
+  import { marked } from 'marked'; // Import the Markdown parser
+  
   let notes = [];
   let selectedNote = null;
   let noteContent = '';
+  let parsedContent = '';
+  let isEditing = false;  // New variable to track if the user is in editing mode
   let autoSaveTimer = null;
   let newNoteName = '';
 
@@ -23,7 +27,14 @@
   function loadNoteContent(note) {
     selectedNote = note;
     noteContent = note.content;
+    parsedContent = parseMarkdown(noteContent); // Parse markdown on load
+    isEditing = false; // Open in viewing mode
     clearTimeout(autoSaveTimer);
+  }
+
+  // Parse markdown text into HTML
+  function parseMarkdown(content) {
+    return marked(content); // Use the `marked` library to parse the content
   }
 
   // Auto-save functionality to save the note 5 seconds after the user stops typing
@@ -32,7 +43,7 @@
     autoSaveTimer = setTimeout(saveNote, 5000); // Save after 5 seconds of inactivity
   }
 
-  // Save the currently selected note
+  // Save the currently selected note and switch back to preview mode
   async function saveNote() {
     if (!selectedNote) return;
 
@@ -47,6 +58,8 @@
     });
 
     if (res.ok) {
+      parsedContent = parseMarkdown(noteContent); // Re-parse the content after saving
+      isEditing = false; // Switch back to viewing mode
       console.log('Note saved');
     } else {
       alert('Failed to save note');
@@ -77,33 +90,63 @@
       alert(`Failed to add note: ${error.error}`);
     }
   }
+
+  // Update the note content and apply the markdown parsing in real-time
+  function updateContent(event) {
+    noteContent = event.target.value;
+    parsedContent = parseMarkdown(noteContent); // Parse markdown as user types
+    startAutoSave();
+  }
+
+  // Switch to editing mode when the user interacts with the preview
+  function switchToEditing() {
+    isEditing = true;
+  }
+
   onMount(fetchNotes);
 </script>
 
 <div class="container">
-  <div class="editor">
-    {#if selectedNote}
-      <textarea class="note-input" bind:value={noteContent} on:input={startAutoSave}></textarea>
-    {:else}
-      <p>Select a note to edit</p>
-    {/if}
-  </div>
-
   <div class="notes-list">
     <h3>Notes</h3>
     <input type="text" placeholder="New note" bind:value={newNoteName} />
     <button on:click={addNote}>Add Note</button>
     <ul>
       {#each notes as note}
-        <li class="note-item" on:click={() => loadNoteContent(note)}>
+        <li 
+          class="note-item {selectedNote && selectedNote.fileName === note.fileName ? 'active' : ''}" 
+          on:click={() => loadNoteContent(note)}
+        >
           {note.fileName}
         </li>
       {/each}
     </ul>
+  </div>
+
+  <div class="editor">
+    {#if selectedNote}
+      <!-- Show the editing area if in editing mode -->
+      {#if isEditing}
+        <textarea 
+          class="note-input" 
+          bind:value={noteContent} 
+          on:input={updateContent}
+        ></textarea>
+      {:else}
+        <!-- Otherwise show the preview and switch to editing when the user interacts -->
+        <div 
+          class="note-preview" 
+          on:click={switchToEditing}  
+        >
+        {@html parsedContent} 
+        </div>
+      {/if}
+    {:else}
+      <p>Select a note to edit</p>
+    {/if}
   </div>
 </div>
 
 <style>
   @import './notes.css';
 </style>
-
