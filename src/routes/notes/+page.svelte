@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { marked } from 'marked'; // Import the Markdown parser
+	import Input from '$lib/components/ui/input/input.svelte';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import Separator from '$lib/components/ui/separator/separator.svelte';
+	import { logout } from '$lib/utils/auth';
 
 	interface Note {
 		fileName: string;
@@ -111,41 +115,62 @@
 	onMount(fetchNotes);
 </script>
 
-<div class="flex flex-row h-screen bg-[#f0f0f0] text-black">
-	<div class="w-[30%] bg-[#2d2d2d] pl-2.5 pt-5 text-white overflow-y-auto">
-		<h3 class="mb-4">Notes</h3>
-		<input
-			type="text"
-			placeholder="New note"
-			bind:value={newNoteName}
-			class="w-[60%] p-2.5 mb-1.25 bg-[#444] rounded text-white"
-		/>
-		<button
-			on:click={addNote}
-			class="w-full bg-[#8a2be2] text-white border-none rounded p-2.5 cursor-pointer text-base hover:bg-[#7a1fd1] mb-5"
-			>Add Note</button
-		>
-		<ul>
-			{#each notes as note}
-				<li class="mb-1.25">
-					<button
-						class={`w-full p-2.5 rounded cursor-pointer ${
-							selectedNote && selectedNote.fileName === note.fileName
-								? 'bg-[#8a2be2]'
-								: 'bg-[#444] hover:bg-[#555]'
-						}`}
-						on:click={() => loadNoteContent(note)}
-					>
-						{note.fileName}
-					</button>
-				</li>
-			{/each}
-		</ul>
+<div class="flex flex-row h-screen">
+	<!-- Sidebar -->
+	<div class="w-[300px] pt-6 flex flex-col bg-primary justify-between">
+		<div class="flex flex-col items-start">
+			<!-- Header -->
+			<div class="flex flex-col items-start gap-2 px-6">
+				<h3 class="mb-4 text-4xl font-bold text-primary-foreground">Notes</h3>
+				<Input
+					type="text"
+					placeholder="New note"
+					bind:value={newNoteName}
+					class="w-full rounded "
+				/>
+				<Button
+					on:click={addNote}
+					class="w-full bg-primary-foreground text-primary hover:bg-primary-foreground/80"
+					>Add Note</Button
+				>
+			</div>
+
+			<!-- Notes List -->
+			<ul class="flex flex-col mt-8 h-full overflow-y-scroll">
+				{#each notes as note}
+					<Separator class="my-0" />
+					<li class="">
+						<button
+							class={`flex flex-row items-start w-full py-3 px-6 cursor-pointer ${
+								selectedNote && selectedNote.fileName === note.fileName
+									? 'bg-primary-foreground text-primary'
+									: 'bg-primary hover:bg-primary-foreground/60'
+							}`}
+							on:click={() => loadNoteContent(note)}
+						>
+							<div class="prose prose-sm max-w-none w-full overflow-hidden">
+								<p class="truncate text-left">{note.fileName}</p>
+							</div>
+						</button>
+					</li>
+				{/each}
+			</ul>
+		</div>
+
+		<!-- Logout -->
+		<div class="flex items-center justify-center gap-2 py-4 flex-col">
+			<Separator class="my-0 py-0" />
+			<div class="flex flex-row items-center justify-center gap-2 w-full px-6">
+				<Button
+					class="w-full bg-primary-foreground text-primary hover:bg-primary-foreground/80"
+					on:click={logout}>Logout</Button
+				>
+			</div>
+		</div>
 	</div>
 
-	<div
-		class="w-[70%] mr-5 p-5 bg-white text-black border-l border-[#ccc] flex flex-col justify-between"
-	>
+	<!-- Note Editor -->
+	<div class="w-[70%] mr-5 p-5 bg-white text-black border-l flex flex-col justify-between">
 		{#if selectedNote}
 			{#if isEditing}
 				<textarea
