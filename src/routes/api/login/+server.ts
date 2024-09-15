@@ -1,13 +1,19 @@
 import jwt from 'jsonwebtoken';
 
-const users = {
-  'testuser': 'password123',  // simple in-memory user
-};
+interface User {
+  username: string;
+  password: string;
+}
+
+const users: User[] = [
+  { username: 'testuser', password: 'password123' },
+];
 
 export async function POST({ request }) {
   const { username, password } = await request.json();
 
-  if (users[username] && users[username] === password) {
+  const user = users.find(u => u.username === username && u.password === password);
+  if (user) {
     const token = jwt.sign({ username }, 'secretKey', { expiresIn: '1h' });
     return new Response(JSON.stringify({ token }), { status: 200 });
   }

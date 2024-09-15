@@ -1,152 +1,152 @@
-<script>
-  import { onMount } from 'svelte';
-  import { marked } from 'marked'; // Import the Markdown parser
-  
-  let notes = [];
-  let selectedNote = null;
-  let noteContent = '';
-  let parsedContent = '';
-  let isEditing = false;  // New variable to track if the user is in editing mode
-  let autoSaveTimer = null;
-  let newNoteName = '';
+<script lang="ts">
+	import { onMount } from 'svelte';
+	import { marked } from 'marked'; // Import the Markdown parser
 
-  // Fetch the list of notes
-  async function fetchNotes() {
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/notes', {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (res.ok) {
-      notes = await res.json();
-    } else {
-      alert('Failed to fetch notes');
-    }
-  }
+	interface Note {
+		fileName: string;
+		content: string;
+	}
 
-  // Load the selected note content
-  function loadNoteContent(note) {
-    selectedNote = note;
-    noteContent = note.content;
-    parsedContent = parseMarkdown(noteContent); // Parse markdown on load
-    isEditing = false; // Open in viewing mode
-    clearTimeout(autoSaveTimer);
-  }
+	let notes: Note[] = [];
+	let selectedNote: Note | null = null;
+	let noteContent = '';
+	let parsedContent = '';
+	let isEditing = false; // New variable to track if the user is in editing mode
+	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+	let newNoteName = '';
 
-  // Parse markdown text into HTML
-  function parseMarkdown(content) {
-    return marked(content); // Use the `marked` library to parse the content
-  }
+	// Fetch the list of notes
+	async function fetchNotes() {
+		const token = localStorage.getItem('token');
+		const res = await fetch('/api/notes', {
+			headers: { Authorization: `Bearer ${token}` }
+		});
+		if (res.ok) {
+			notes = await res.json();
+		} else {
+			alert('Failed to fetch notes');
+		}
+	}
 
-  // Auto-save functionality to save the note 5 seconds after the user stops typing
-  function startAutoSave() {
-    clearTimeout(autoSaveTimer);
-    autoSaveTimer = setTimeout(saveNote, 5000); // Save after 5 seconds of inactivity
-  }
+	// Load the selected note content
+	async function loadNoteContent(note: Note) {
+		selectedNote = note;
+		noteContent = note.content;
+		parsedContent = await parseMarkdown(noteContent); // Parse markdown on load
+		isEditing = false; // Open in viewing mode
+		if (autoSaveTimer) clearTimeout(autoSaveTimer);
+	}
 
-  // Save the currently selected note and switch back to preview mode
-  async function saveNote() {
-    if (!selectedNote) return;
+	// Parse markdown text into HTML
+	async function parseMarkdown(content: string): Promise<string> {
+		return await marked.parseInline(content);
+	}
 
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/notes', {
-      method: 'PUT',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ fileName: selectedNote.fileName, content: noteContent })
-    });
+	// Auto-save functionality to save the note 5 seconds after the user stops typing
+	function startAutoSave() {
+		if (autoSaveTimer) clearTimeout(autoSaveTimer);
+		autoSaveTimer = setTimeout(saveNote, 5000); // Save after 5 seconds of inactivity
+	}
 
-    if (res.ok) {
-      parsedContent = parseMarkdown(noteContent); // Re-parse the content after saving
-      isEditing = false; // Switch back to viewing mode
-      console.log('Note saved');
-    } else {
-      alert('Failed to save note');
-    }
-  }
+	// Save the currently selected note and switch back to preview mode
+	async function saveNote() {
+		if (!selectedNote) return;
 
-  // Add a new note
-  async function addNote() {
-    if (!newNoteName) {
-      alert('Please enter a name for the new note');
-      return;
-    }
+		const token = localStorage.getItem('token');
+		const res = await fetch('/api/notes', {
+			method: 'PUT',
+			headers: {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ fileName: selectedNote.fileName, content: noteContent })
+		});
 
-    const token = localStorage.getItem('token');
-    const res = await fetch('/api/notes', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ fileName: newNoteName, content: '' }) // Empty content for a new note
-    });
-    if (res.ok) {
-      newNoteName = ''; // Reset the input field
-      fetchNotes(); // Refresh the notes list
-    } else {
-      const error = await res.json();
-      alert(`Failed to add note: ${error.error}`);
-    }
-  }
+		if (res.ok) {
+			parsedContent = await parseMarkdown(noteContent); // Re-parse the content after saving
+			isEditing = false; // Switch back to viewing mode
+			console.log('Note saved');
+		} else {
+			alert('Failed to save note');
+		}
+	}
 
-  // Update the note content and apply the markdown parsing in real-time
-  function updateContent(event) {
-    noteContent = event.target.value;
-    parsedContent = parseMarkdown(noteContent); // Parse markdown as user types
-    startAutoSave();
-  }
+	// Add a new note
+	async function addNote() {
+		if (!newNoteName) {
+			alert('Please enter a name for the new note');
+			return;
+		}
 
-  // Switch to editing mode when the user interacts with the preview
-  function switchToEditing() {
-    isEditing = true;
-  }
+		const token = localStorage.getItem('token');
+		const res = await fetch('/api/notes', {
+			method: 'POST',
+			headers: {
+				Authorization: `Bearer ${token}`,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ fileName: newNoteName, content: '' }) // Empty content for a new note
+		});
+		if (res.ok) {
+			newNoteName = ''; // Reset the input field
+			fetchNotes(); // Refresh the notes list
+		} else {
+			const error = await res.json();
+			alert(`Failed to add note: ${error.error}`);
+		}
+	}
 
-  onMount(fetchNotes);
+	// Update the note content and apply the markdown parsing in real-time
+	async function updateContent(event: any) {
+		noteContent = event.target.value;
+		parsedContent = await parseMarkdown(noteContent); // Parse markdown as user types
+		startAutoSave();
+	}
+
+	// Switch to editing mode when the user interacts with the preview
+	function switchToEditing() {
+		isEditing = true;
+	}
+
+	onMount(fetchNotes);
 </script>
 
 <div class="container">
-  <div class="notes-list">
-    <h3>Notes</h3>
-    <input type="text" placeholder="New note" bind:value={newNoteName} />
-    <button on:click={addNote}>Add Note</button>
-    <ul>
-      {#each notes as note}
-        <li 
-          class="note-item {selectedNote && selectedNote.fileName === note.fileName ? 'active' : ''}" 
-          on:click={() => loadNoteContent(note)}
-        >
-          {note.fileName}
-        </li>
-      {/each}
-    </ul>
-  </div>
+	<div class="notes-list">
+		<h3>Notes</h3>
+		<input type="text" placeholder="New note" bind:value={newNoteName} />
+		<button on:click={addNote}>Add Note</button>
+		<ul>
+			{#each notes as note}
+				<li class="note-item">
+					<button
+						class={selectedNote && selectedNote.fileName === note.fileName ? 'active' : ''}
+						on:click={() => loadNoteContent(note)}
+					>
+						{note.fileName}
+					</button>
+				</li>
+			{/each}
+		</ul>
+	</div>
 
-  <div class="editor">
-    {#if selectedNote}
-      <!-- Show the editing area if in editing mode -->
-      {#if isEditing}
-        <textarea 
-          class="note-input" 
-          bind:value={noteContent} 
-          on:input={updateContent}
-        ></textarea>
-      {:else}
-        <!-- Otherwise show the preview and switch to editing when the user interacts -->
-        <div 
-          class="note-preview" 
-          on:click={switchToEditing}  
-        >
-        {@html parsedContent} 
-        </div>
-      {/if}
-    {:else}
-      <p>Select a note to edit</p>
-    {/if}
-  </div>
+	<div class="editor">
+		{#if selectedNote}
+			<!-- Show the editing area if in editing mode -->
+			{#if isEditing}
+				<textarea class="note-input" bind:value={noteContent} on:input={updateContent}></textarea>
+			{:else}
+				<!-- Otherwise show the preview and switch to editing when the user interacts -->
+				<button class="note-preview" on:click={switchToEditing}>
+					{@html parsedContent}
+				</button>
+			{/if}
+		{:else}
+			<p>Select a note to edit</p>
+		{/if}
+	</div>
 </div>
 
 <style>
-  @import './notes.css';
+	@import './notes.css';
 </style>

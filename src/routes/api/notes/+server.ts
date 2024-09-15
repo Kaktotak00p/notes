@@ -1,6 +1,7 @@
 import jwt from 'jsonwebtoken';
 import fs from 'fs';
 import path from 'path';
+import type { RequestEvent } from '@sveltejs/kit';
 
 const vaultDir = path.resolve('notes_vault'); // Directory to save notes
 
@@ -9,13 +10,17 @@ if (!fs.existsSync(vaultDir)) {
   fs.mkdirSync(vaultDir);
 }
 
-function authenticate(request) {
+interface User {
+  username: string;
+}
+
+function authenticate(request: RequestEvent['request']) {
   const authHeader = request.headers.get('authorization');
   if (!authHeader) return false;
 
   const token = authHeader.split(' ')[1];
   try {
-    return jwt.verify(token, 'secretKey');
+    return jwt.verify(token, 'secretKey') as User;
   } catch (err) {
     return false;
   }
@@ -70,7 +75,7 @@ export async function PUT({ request }) {
   }
 
   const { fileName, content } = await request.json();
-  
+
   // Check if the note file exists
   const filePath = path.join(vaultDir, fileName);
   if (!fs.existsSync(filePath)) {
