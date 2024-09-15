@@ -3,6 +3,7 @@
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { isAuthenticated } from '$lib/stores/auth';
+	import { toast } from 'svelte-sonner';
 
 	let username = '';
 	let password = '';
@@ -20,7 +21,7 @@
 			$isAuthenticated = true;
 			goto('/notes');
 		} else {
-			alert('Login failed');
+			toast.error('Invalid credentials...');
 		}
 	}
 </script>

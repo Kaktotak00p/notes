@@ -9,6 +9,8 @@
 	import { X, Check, Trash } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import { notes } from '$lib/stores/notes';
+	import { tasks } from '$lib/stores/tasks';
+	import * as Tabs from '$lib/components/ui/tabs';
 
 	interface Note {
 		fileName: string;
@@ -21,6 +23,7 @@
 	let isEditing = false; // New variable to track if the user is in editing mode
 	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let newNoteName = '';
+	let selectedTab: 'notes' | 'tasks' = 'notes';
 
 	// Load the selected note content
 	async function loadNoteContent(note: Note) {
@@ -139,6 +142,40 @@
 	// 		fetchNotes();
 	// 	}
 	// });
+
+	function handleActionButton() {
+		if (selectedTab === 'notes') {
+			addNote();
+		} else if (selectedTab === 'tasks') {
+			createTaskList();
+		}
+	}
+
+	function createTaskList() {
+		if (newNoteName.trim()) {
+			$tasks = [...$tasks, { name: newNoteName.trim(), tasks: [] }];
+			newNoteName = '';
+		}
+	}
+
+	function deleteTaskList(listName: string) {
+		tasks.deleteTaskList(listName);
+	}
+
+	function addTask(listName: string) {
+		const taskName = prompt('Enter task name:');
+		if (taskName && taskName.trim()) {
+			tasks.addTask(listName, {
+				id: Date.now().toString(),
+				content: taskName.trim(),
+				completed: false
+			});
+		}
+	}
+
+	function deleteTask(listName: string, taskId: string) {
+		tasks.deleteTask(listName, taskId);
+	}
 </script>
 
 <div class="flex flex-row h-screen">
@@ -150,34 +187,48 @@
 				<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
 				<Input
 					type="text"
-					placeholder="New note"
+					placeholder={selectedTab === 'notes' ? 'New note' : 'New task list'}
 					bind:value={newNoteName}
 					class="w-full rounded "
 				/>
-				<Button on:click={addNote} class="w-full">Add Note</Button>
+				<Button on:click={handleActionButton} class="w-full"
+					>{selectedTab === 'notes' ? 'Add Note' : 'Add Task List'}</Button
+				>
 			</div>
 
 			<!-- Notes List -->
-			<ul class="flex flex-col w-full h-full mt-8 overflow-y-scroll">
-				{#each $notes as note}
-					<Separator class="my-0" />
-					<li class="w-full">
-						<button
-							class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
-								selectedNote && selectedNote.fileName === note.fileName
-									? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
-									: 'bg-primary-foreground text-primary hover:bg-primary/20'
-							}`}
-							on:click={() => loadNoteContent(note)}
-						>
-							{note.fileName}
-							<Button variant="ghost" size="icon" on:click={() => deleteNote(note.fileName)}
-								><Trash class="w-4 h-4"></Trash></Button
-							>
-						</button>
-					</li>
-				{/each}
-			</ul>
+			<div class="flex flex-col w-full h-full mt-8 overflow-y-scroll">
+				<Tabs.Root class="w-full" bind:value={selectedTab}>
+					<div class="px-6">
+						<Tabs.List class="w-full">
+							<Tabs.Trigger value="notes" class="w-full">Notes</Tabs.Trigger>
+							<Tabs.Trigger value="tasks" class="w-full">Tasks</Tabs.Trigger>
+						</Tabs.List>
+					</div>
+					<Tabs.Content value="notes" class="w-full h-full overflow-y-scroll">
+						<div class="flex flex-col w-full h-full">
+							{#each $notes as note}
+								<button
+									class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
+										selectedNote && selectedNote.fileName === note.fileName
+											? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
+											: 'bg-primary-foreground text-primary hover:bg-primary/20'
+									}`}
+									on:click={() => loadNoteContent(note)}
+								>
+									{note.fileName}
+									<Button variant="ghost" size="icon" on:click={() => deleteNote(note.fileName)}
+										><Trash class="w-4 h-4"></Trash></Button
+									>
+								</button>
+							{/each}
+						</div>
+					</Tabs.Content>
+					<Tabs.Content class="w-full h-full overflow-y-scroll" value="tasks"
+						>Change your password here.</Tabs.Content
+					>
+				</Tabs.Root>
+			</div>
 		</div>
 
 		<!-- Logout -->
