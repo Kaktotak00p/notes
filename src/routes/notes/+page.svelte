@@ -111,16 +111,29 @@
 	onMount(fetchNotes);
 </script>
 
-<div class="container">
-	<div class="notes-list">
-		<h3>Notes</h3>
-		<input type="text" placeholder="New note" bind:value={newNoteName} />
-		<button on:click={addNote}>Add Note</button>
+<div class="flex flex-row h-screen bg-[#f0f0f0] text-black">
+	<div class="w-[30%] bg-[#2d2d2d] pl-2.5 pt-5 text-white overflow-y-auto">
+		<h3 class="mb-4">Notes</h3>
+		<input
+			type="text"
+			placeholder="New note"
+			bind:value={newNoteName}
+			class="w-[60%] p-2.5 mb-1.25 bg-[#444] rounded text-white"
+		/>
+		<button
+			on:click={addNote}
+			class="w-full bg-[#8a2be2] text-white border-none rounded p-2.5 cursor-pointer text-base hover:bg-[#7a1fd1] mb-5"
+			>Add Note</button
+		>
 		<ul>
 			{#each notes as note}
-				<li class="note-item">
+				<li class="mb-1.25">
 					<button
-						class={selectedNote && selectedNote.fileName === note.fileName ? 'active' : ''}
+						class={`w-full p-2.5 rounded cursor-pointer ${
+							selectedNote && selectedNote.fileName === note.fileName
+								? 'bg-[#8a2be2]'
+								: 'bg-[#444] hover:bg-[#555]'
+						}`}
 						on:click={() => loadNoteContent(note)}
 					>
 						{note.fileName}
@@ -130,15 +143,25 @@
 		</ul>
 	</div>
 
-	<div class="editor">
+	<div
+		class="w-[70%] mr-5 p-5 bg-white text-black border-l border-[#ccc] flex flex-col justify-between"
+	>
 		{#if selectedNote}
-			<!-- Show the editing area if in editing mode -->
 			{#if isEditing}
-				<textarea class="note-input" bind:value={noteContent} on:input={updateContent}></textarea>
+				<textarea
+					class="w-full h-[calc(100%-50px)] border-none outline-none p-2.5 bg-[#f9f9f9] text-black text-base resize-none"
+					bind:value={noteContent}
+					on:input={updateContent}
+				></textarea>
 			{:else}
-				<!-- Otherwise show the preview and switch to editing when the user interacts -->
-				<button class="note-preview" on:click={switchToEditing}>
-					{@html parsedContent}
+				<button class="text-left w-full h-full" on:click={switchToEditing}>
+					<div class="prose prose-sm max-w-none">
+						<div
+							class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5"
+						>
+							{@html parsedContent}
+						</div>
+					</div>
 				</button>
 			{/if}
 		{:else}
@@ -146,7 +169,3 @@
 		{/if}
 	</div>
 </div>
-
-<style>
-	@import './notes.css';
-</style>
