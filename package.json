@@ -35,11 +35,15 @@
   },
   "type": "module",
   "dependencies": {
+    "@tailwindcss/container-queries": "^0.1.1",
     "@tailwindcss/typography": "^0.5.15",
     "bits-ui": "^0.21.13",
     "clsx": "^2.1.1",
     "jsonwebtoken": "^9.0.2",
+    "lucide-svelte": "^0.441.0",
     "marked": "^14.1.2",
+    "svelte-legos": "^0.2.5",
+    "svelte-sonner": "^0.3.28",
     "tailwind-merge": "^2.5.2",
     "tailwind-variants": "^0.2.1"
   }

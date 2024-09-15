@@ -6,12 +6,19 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import { isAuthenticated } from '$lib/stores/auth';
+	import { Toaster } from 'svelte-sonner';
 
 	let showFlashscreen = false;
 
 	$: if (browser && !$isAuthenticated) {
-		console.log('Redirecting to login');
-		goto('/login');
+		// Check if token is stored locally
+		const token = localStorage.getItem('token');
+		if (token) {
+			isAuthenticated.set(true);
+		} else {
+			console.log('Redirecting to login');
+			goto('/login');
+		}
 	}
 
 	onMount(() => {
@@ -35,7 +42,7 @@
 
 {#if showFlashscreen}
 	<div
-		class="fixed inset-0 flex items-center justify-center bg-primary text-primary-foreground z-50"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-primary text-primary-foreground"
 		in:fade={{ duration: 300 }}
 		out:fly={{ y: -1000, duration: 500 }}
 	>
@@ -43,4 +50,5 @@
 	</div>
 {/if}
 
+<Toaster />
 <slot />
