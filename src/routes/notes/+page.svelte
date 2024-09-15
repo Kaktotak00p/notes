@@ -5,36 +5,22 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { logout } from '$lib/utils/auth';
-	import { isAuthenticated } from '$lib/stores/auth';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { X, Check } from 'lucide-svelte';
+	import { X, Check, Trash } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
+	import { notes } from '$lib/stores/notes';
 
 	interface Note {
 		fileName: string;
 		content: string;
 	}
 
-	let notes: Note[] = [];
 	let selectedNote: Note | null = null;
 	let noteContent = '';
 	let parsedContent = '';
 	let isEditing = false; // New variable to track if the user is in editing mode
 	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let newNoteName = '';
-
-	// Fetch the list of notes
-	async function fetchNotes() {
-		const token = localStorage.getItem('token');
-		const res = await fetch('/api/notes', {
-			headers: { Authorization: `Bearer ${token}` }
-		});
-		if (res.ok) {
-			notes = await res.json();
-		} else {
-			alert('Failed to fetch notes');
-		}
-	}
 
 	// Load the selected note content
 	async function loadNoteContent(note: Note) {
@@ -63,25 +49,39 @@
 			return;
 		}
 
-		const token = localStorage.getItem('token');
-		const res = await fetch('/api/notes', {
-			method: 'PUT',
-			headers: {
-				Authorization: `Bearer ${token}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ fileName: selectedNote.fileName, content: noteContent })
-		});
+		// Save or update note in store
+		notes.updateNote(selectedNote.fileName, noteContent);
 
-		if (res.ok) {
-			parsedContent = parseMarkdown(noteContent); // Re-parse the content after saving
-			isEditing = false; // Switch back to viewing mode
-			toast.success('Note saved');
-			console.log('Note saved');
-		} else {
-			toast.error('Failed to save note');
-			alert('Failed to save note');
-		}
+		parsedContent = parseMarkdown(noteContent); // Re-parse the content after saving
+		isEditing = false; // Switch back to viewing mode
+
+		toast.success('Note saved');
+
+		// const token = localStorage.getItem('token');
+		// const res = await fetch('/api/notes', {
+		// 	method: 'PUT',
+		// 	headers: {
+		// 		Authorization: `Bearer ${token}`,
+		// 		'Content-Type': 'application/json'
+		// 	},
+		// 	body: JSON.stringify({ fileName: selectedNote.fileName, content: noteContent })
+		// });
+
+		// if (res.ok) {
+		// 	parsedContent = parseMarkdown(noteContent); // Re-parse the content after saving
+		// 	isEditing = false; // Switch back to viewing mode
+		// 	toast.success('Note saved');
+		// 	console.log('Note saved');
+		// } else {
+		// 	toast.error('Failed to save note');
+		// 	alert('Failed to save note');
+		// }
+	}
+
+	// Delete a note
+	async function deleteNote(fileName: string) {
+		notes.deleteNote(fileName);
+		toast.success('Note deleted');
 	}
 
 	// Add a new note
@@ -91,22 +91,34 @@
 			return;
 		}
 
-		const token = localStorage.getItem('token');
-		const res = await fetch('/api/notes', {
-			method: 'POST',
-			headers: {
-				Authorization: `Bearer ${token}`,
-				'Content-Type': 'application/json'
-			},
-			body: JSON.stringify({ fileName: newNoteName, content: '' }) // Empty content for a new note
-		});
-		if (res.ok) {
-			newNoteName = ''; // Reset the input field
-			fetchNotes(); // Refresh the notes list
+		// check if note already exists
+		if ($notes.some((note) => note.fileName === newNoteName)) {
+			toast.error('Note already exists');
+			return;
 		} else {
-			const error = await res.json();
-			alert(`Failed to add note: ${error.error}`);
+			notes.addNote({ fileName: newNoteName, content: '' });
+
+			// Open the new note
+			loadNoteContent({ fileName: newNoteName, content: '' });
+			newNoteName = '';
 		}
+
+		// const token = localStorage.getItem('token');
+		// const res = await fetch('/api/notes', {
+		// 	method: 'POST',
+		// 	headers: {
+		// 		Authorization: `Bearer ${token}`,
+		// 		'Content-Type': 'application/json'
+		// 	},
+		// 	body: JSON.stringify({ fileName: newNoteName, content: '' }) // Empty content for a new note
+		// });
+		// if (res.ok) {
+		// 	newNoteName = ''; // Reset the input field
+		// 	// fetchNotes(); // Refresh the notes list
+		// } else {
+		// 	const error = await res.json();
+		// 	alert(`Failed to add note: ${error.error}`);
+		// }
 	}
 
 	// Update the note content and apply the markdown parsing in real-time
@@ -121,20 +133,21 @@
 		isEditing = true;
 	}
 
-	onMount(() => {
-		if ($isAuthenticated) {
-			fetchNotes();
-		}
-	});
+	// onMount(() => {
+	// 	if ($isAuthenticated) {
+
+	// 		fetchNotes();
+	// 	}
+	// });
 </script>
 
 <div class="flex flex-row h-screen">
 	<!-- Sidebar -->
-	<div class="w-[300px] pt-6 flex flex-col bg-primary-foreground justify-between border-r">
+	<div class="min-w-[300px] pt-6 flex flex-col bg-primary-foreground justify-between border-r">
 		<div class="flex flex-col items-start">
 			<!-- Header -->
 			<div class="flex flex-col items-start w-full gap-2 px-6">
-				<h3 class="mb-4 text-4xl font-bold text-primary">Notes</h3>
+				<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
 				<Input
 					type="text"
 					placeholder="New note"
@@ -146,11 +159,11 @@
 
 			<!-- Notes List -->
 			<ul class="flex flex-col w-full h-full mt-8 overflow-y-scroll">
-				{#each notes as note}
+				{#each $notes as note}
 					<Separator class="my-0" />
 					<li class="w-full">
 						<button
-							class={`flex flex-row items-start w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none text-left truncate ${
+							class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
 								selectedNote && selectedNote.fileName === note.fileName
 									? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
 									: 'bg-primary-foreground text-primary hover:bg-primary/20'
@@ -158,6 +171,9 @@
 							on:click={() => loadNoteContent(note)}
 						>
 							{note.fileName}
+							<Button variant="ghost" size="icon" on:click={() => deleteNote(note.fileName)}
+								><Trash class="w-4 h-4"></Trash></Button
+							>
 						</button>
 					</li>
 				{/each}

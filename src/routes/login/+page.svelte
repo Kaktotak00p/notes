@@ -25,10 +25,10 @@
 	}
 </script>
 
-<div class="flex flex-col items-center justify-center h-screen">
+<div class="flex flex-col items-center justify-center h-screen bg-primary-foreground">
 	<form
 		on:submit|preventDefault={login}
-		class="flex flex-col items-center justify-center h-screen w-60 gap-4"
+		class="flex flex-col items-center justify-center h-screen gap-4 w-60"
 	>
 		<Input type="text" placeholder="Username" bind:value={username} class="input-field" />
 		<Input type="password" placeholder="Password" bind:value={password} class="input-field" />
