@@ -5,6 +5,8 @@
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { logout } from '$lib/utils/auth';
+	import { isAuthenticated } from '$lib/stores/auth';
+	import { goto } from '$app/navigation';
 
 	interface Note {
 		fileName: string;
@@ -112,7 +114,11 @@
 		isEditing = true;
 	}
 
-	onMount(fetchNotes);
+	onMount(() => {
+		if ($isAuthenticated) {
+			fetchNotes();
+		}
+	});
 </script>
 
 <div class="flex flex-row h-screen">
@@ -120,7 +126,7 @@
 	<div class="w-[300px] pt-6 flex flex-col bg-primary justify-between">
 		<div class="flex flex-col items-start">
 			<!-- Header -->
-			<div class="flex flex-col items-start gap-2 px-6">
+			<div class="flex flex-col items-start gap-2 px-6 w-full">
 				<h3 class="mb-4 text-4xl font-bold text-primary-foreground">Notes</h3>
 				<Input
 					type="text"
@@ -136,7 +142,7 @@
 			</div>
 
 			<!-- Notes List -->
-			<ul class="flex flex-col mt-8 h-full overflow-y-scroll">
+			<ul class="flex flex-col mt-8 h-full overflow-y-scroll text-primary-foreground">
 				{#each notes as note}
 					<Separator class="my-0" />
 					<li class="">
@@ -158,9 +164,9 @@
 		</div>
 
 		<!-- Logout -->
-		<div class="flex items-center justify-center gap-2 py-4 flex-col">
+		<div class="flex items-center justify-center flex-col">
 			<Separator class="my-0 py-0" />
-			<div class="flex flex-row items-center justify-center gap-2 w-full px-6">
+			<div class="flex flex-row items-center justify-center w-full px-6 py-4">
 				<Button
 					class="w-full bg-primary-foreground text-primary hover:bg-primary-foreground/80"
 					on:click={logout}>Logout</Button

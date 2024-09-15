@@ -4,11 +4,15 @@
 	import { onMount } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { browser } from '$app/environment';
+	import { goto } from '$app/navigation';
+	import { isAuthenticated } from '$lib/stores/auth';
 
-	let isAuthenticated = false;
 	let showFlashscreen = false;
 
-	$: isAuthenticated = !!$page.data.token;
+	$: if (browser && !$isAuthenticated) {
+		console.log('Redirecting to login');
+		goto('/login');
+	}
 
 	onMount(() => {
 		if (browser) {

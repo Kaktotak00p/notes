@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
+	import { isAuthenticated } from '$lib/stores/auth';
 
 	let username = '';
 	let password = '';
@@ -16,6 +17,7 @@
 		if (res.ok) {
 			const { token } = await res.json();
 			localStorage.setItem('token', token);
+			$isAuthenticated = true;
 			goto('/notes');
 		} else {
 			alert('Login failed');
