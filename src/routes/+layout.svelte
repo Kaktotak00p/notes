@@ -1,10 +1,10 @@
 <script>
-  import { page } from '$app/stores';
-  
-  let isAuthenticated = false;
+	import '../global.css';
+	import { page } from '$app/stores';
 
-  $: isAuthenticated = !!$page.data.token;
+	let isAuthenticated = false;
+
+	$: isAuthenticated = !!$page.data.token;
 </script>
 
 <slot />
-
