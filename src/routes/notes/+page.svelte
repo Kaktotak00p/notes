@@ -9,8 +9,9 @@
 	import { X, Check, Trash } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import { notes } from '$lib/stores/notes';
-	import { tasks } from '$lib/stores/tasks';
+	import { tasks, type TaskList } from '$lib/stores/tasks';
 	import * as Tabs from '$lib/components/ui/tabs';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 
 	interface Note {
 		fileName: string;
@@ -18,11 +19,13 @@
 	}
 
 	let selectedNote: Note | null = null;
+	let selectedTaskList: TaskList | null = null;
 	let noteContent = '';
 	let parsedContent = '';
 	let isEditing = false; // New variable to track if the user is in editing mode
 	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let newNoteName = '';
+	let newTaskName = '';
 	let selectedTab: 'notes' | 'tasks' = 'notes';
 
 	// Load the selected note content
@@ -32,6 +35,12 @@
 		parsedContent = parseMarkdown(noteContent); // Parse markdown on load
 		isEditing = false; // Open in viewing mode
 		if (autoSaveTimer) clearTimeout(autoSaveTimer);
+	}
+
+	// Load the selected note content
+	async function loadTaskList(taskList: TaskList) {
+		selectedTaskList = taskList;
+		isEditing = false; // Open in viewing mode
 	}
 
 	// Parse markdown text into HTML
@@ -163,18 +172,37 @@
 	}
 
 	function addTask(listName: string) {
-		const taskName = prompt('Enter task name:');
-		if (taskName && taskName.trim()) {
+		if (newTaskName && newTaskName.trim()) {
 			tasks.addTask(listName, {
 				id: Date.now().toString(),
-				content: taskName.trim(),
+				content: newTaskName.trim(),
 				completed: false
 			});
+
+			// Refresh the selected task list
+			selectedTaskList = $tasks.find((taskList) => taskList.name === listName) || null;
+			toast.success('Task added');
+		} else {
+			toast.error('Please enter a name for the new task');
 		}
+		newTaskName = '';
 	}
 
 	function deleteTask(listName: string, taskId: string) {
 		tasks.deleteTask(listName, taskId);
+
+		// Refresh the selected task list
+		selectedTaskList = $tasks.find((taskList) => taskList.name === listName) || null;
+		toast.success('Task deleted');
+	}
+
+	function toggleTask(listName: string, taskId: string) {
+		console.log('toggleTask', listName, taskId);
+		tasks.toggleTask(listName, taskId);
+
+		// Refresh the selected task list
+		selectedTaskList = $tasks.find((taskList) => taskList.name === listName) || null;
+		toast.success('Task status updated');
 	}
 </script>
 
@@ -205,7 +233,7 @@
 							<Tabs.Trigger value="tasks" class="w-full">Tasks</Tabs.Trigger>
 						</Tabs.List>
 					</div>
-					<Tabs.Content value="notes" class="w-full h-full overflow-y-scroll">
+					<Tabs.Content value="notes" class="w-full h-full pt-4 overflow-y-scroll">
 						<div class="flex flex-col w-full h-full">
 							{#each $notes as note}
 								<button
@@ -224,8 +252,24 @@
 							{/each}
 						</div>
 					</Tabs.Content>
-					<Tabs.Content class="w-full h-full overflow-y-scroll" value="tasks"
-						>Change your password here.</Tabs.Content
+					<Tabs.Content class="w-full h-full pt-4 overflow-y-scroll" value="tasks"
+						><div class="flex flex-col w-full h-full">
+							{#each $tasks as taskList}
+								<button
+									class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
+										selectedTaskList && selectedTaskList.name === taskList.name
+											? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
+											: 'bg-primary-foreground text-primary hover:bg-primary/20'
+									}`}
+									on:click={() => loadTaskList(taskList)}
+								>
+									{taskList.name}
+									<Button variant="ghost" size="icon" on:click={() => deleteTaskList(taskList.name)}
+										><Trash class="w-4 h-4"></Trash></Button
+									>
+								</button>
+							{/each}
+						</div></Tabs.Content
 					>
 				</Tabs.Root>
 			</div>
@@ -271,9 +315,49 @@
 					</button>
 				{/if}
 			</div>
+		{:else if selectedTaskList}
+			<!--  Task List Editor -->
+			{#key selectedTaskList}
+				<!-- New task input -->
+				<div class="flex flex-row items-center justify-between gap-6">
+					<Input type="text" placeholder="New task" bind:value={newTaskName} />
+					<Button on:click={() => selectedTaskList && addTask(selectedTaskList.name)}
+						>Add Task</Button
+					>
+				</div>
+
+				<!-- Task List Content -->
+				<div class="flex flex-col items-start justify-start w-full h-full gap-4">
+					{#each selectedTaskList.tasks as task}
+						{#if task && selectedTaskList}
+							<div
+								class="flex flex-row items-center justify-between w-full p-2 px-6 border rounded-md border-muted"
+							>
+								<div class="flex items-center w-full gap-6">
+									<Checkbox
+										bind:checked={task.completed}
+										class="w-5 h-5 mr-2 rounded-full form-checkbox "
+										on:click={(v) => selectedTaskList && toggleTask(selectedTaskList.name, task.id)}
+									/>
+									<span class={task.completed ? 'line-through text-gray-500' : ''}
+										>{task.content}</span
+									>
+								</div>
+								<Button
+									variant="ghost"
+									size="sm"
+									on:click={() => selectedTaskList && deleteTask(selectedTaskList.name, task.id)}
+								>
+									<Trash class="w-4 h-4" />
+								</Button>
+							</div>
+						{/if}
+					{/each}
+				</div>
+			{/key}
 		{:else}
 			<div class="flex flex-col items-center justify-center h-full">
-				<p class="text-primary-foreground">Select a note to edit</p>
+				<p class="text-primary-foreground">Select a note or task list to edit</p>
 			</div>
 		{/if}
 	</div>

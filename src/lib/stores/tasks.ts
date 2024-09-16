@@ -1,13 +1,13 @@
 import { writable } from 'svelte/store';
 import { browser } from '$app/environment';
 
-interface Task {
+export interface Task {
     id: string;
     content: string;
     completed: boolean;
 }
 
-interface TaskList {
+export interface TaskList {
     name: string;
     tasks: Task[];
 }
@@ -73,6 +73,21 @@ function createTasksStore() {
         }),
         deleteTaskList: (listName: string) => update(taskLists => {
             const updatedTaskLists = taskLists.filter(list => list.name !== listName);
+            if (browser) {
+                localStorage.setItem('tasks', JSON.stringify(updatedTaskLists));
+            }
+            return updatedTaskLists;
+        })
+        ,
+        toggleTask: (listName: string, taskId: string) => update(taskLists => {
+            const updatedTaskLists = taskLists.map(list =>
+                list.name === listName ? {
+                    ...list,
+                    tasks: list.tasks.map(task =>
+                        task.id === taskId ? { ...task, completed: !task.completed } : task
+                    )
+                } : list
+            );
             if (browser) {
                 localStorage.setItem('tasks', JSON.stringify(updatedTaskLists));
             }
