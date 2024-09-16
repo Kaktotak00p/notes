@@ -6,7 +6,7 @@
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { logout } from '$lib/utils/auth';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { X, Check, Trash, GripVertical } from 'lucide-svelte';
+	import { X, Check, Trash, GripVertical, Plus } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import { notes } from '$lib/stores/notes';
 	import { tasks, type TaskList, type Task } from '$lib/stores/tasks';
@@ -256,16 +256,16 @@
 
 <div class="fixed flex flex-row w-screen h-screen overflow-y-hidden">
 	<!-- Sidebar -->
-	<div class="min-w-[300px] pt-6 flex flex-col bg-primary-foreground justify-between border-r">
-		<div class="flex flex-col items-start">
+	<div class="min-w-[300px] flex flex-col bg-primary-foreground justify-between border-r h-screen">
+		<div class="flex flex-col h-full overflow-hidden">
 			<!-- Header -->
-			<div class="flex flex-col items-start w-full gap-2 px-6">
+			<div class="flex flex-col items-start w-full gap-2 px-6 pt-6">
 				<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
 				<Input
 					type="text"
 					placeholder={selectedTab === 'notes' ? 'New note' : 'New task list'}
 					bind:value={newNoteName}
-					class="w-full rounded "
+					class="w-full rounded"
 				/>
 				<Button on:click={handleActionButton} class="w-full"
 					>{selectedTab === 'notes' ? 'Add Note' : 'Add Task List'}</Button
@@ -273,16 +273,16 @@
 			</div>
 
 			<!-- Notes List -->
-			<div class="flex flex-col w-full h-full mt-8">
-				<Tabs.Root class="w-full" bind:value={selectedTab}>
+			<div class="flex flex-col flex-grow w-full mt-8 overflow-hidden">
+				<Tabs.Root class="flex flex-col w-full h-full" bind:value={selectedTab}>
 					<div class="px-6">
 						<Tabs.List class="w-full">
 							<Tabs.Trigger value="notes" class="w-full">Notes</Tabs.Trigger>
 							<Tabs.Trigger value="tasks" class="w-full">Tasks</Tabs.Trigger>
 						</Tabs.List>
 					</div>
-					<Tabs.Content value="notes" class="w-full h-full pt-4 overflow-y-auto">
-						<div class="flex flex-col w-full h-full">
+					<Tabs.Content value="notes" class="flex-grow overflow-y-auto">
+						<div class="flex flex-col w-full">
 							{#each $notes as note}
 								<button
 									class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
@@ -292,7 +292,7 @@
 									}`}
 									on:click={() => loadNoteContent(note)}
 								>
-									{note.fileName}
+									<span class="truncate">{note.fileName}</span>
 									<Button variant="ghost" size="icon" on:click={() => deleteNote(note.fileName)}
 										><Trash class="w-4 h-4"></Trash></Button
 									>
@@ -300,8 +300,8 @@
 							{/each}
 						</div>
 					</Tabs.Content>
-					<Tabs.Content class="w-full h-full pt-4 overflow-y-auto" value="tasks"
-						><div class="flex flex-col w-full h-full">
+					<Tabs.Content class="flex-grow overflow-y-auto" value="tasks">
+						<div class="flex flex-col w-full">
 							{#each $tasks as taskList}
 								<button
 									class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
@@ -317,8 +317,8 @@
 									>
 								</button>
 							{/each}
-						</div></Tabs.Content
-					>
+						</div>
+					</Tabs.Content>
 				</Tabs.Root>
 			</div>
 		</div>
@@ -370,7 +370,7 @@
 				<div class="flex flex-row items-center justify-between gap-6">
 					<Input type="text" placeholder="New task" bind:value={newTaskName} />
 					<Button on:click={() => selectedTaskList && addTask(selectedTaskList.name)}
-						>Add Task</Button
+						><Plus class="w-4 h-4 mr-2"></Plus> Add Task</Button
 					>
 				</div>
 
@@ -395,7 +395,7 @@
 								<div class="flex items-center w-full gap-6">
 									<Checkbox
 										bind:checked={task.completed}
-										class="w-5 h-5 mr-2 rounded-full form-checkbox "
+										class="items-center justify-center w-5 h-5 mr-2 rounded-full form-checkbox"
 										on:click={(v) => selectedTaskList && toggleTask(selectedTaskList.name, task.id)}
 									/>
 									<span class={task.completed ? 'line-through text-gray-500' : ''}
