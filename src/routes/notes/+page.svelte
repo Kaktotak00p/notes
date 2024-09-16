@@ -1,18 +1,20 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { marked } from 'marked'; // Import the Markdown parser
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { logout } from '$lib/utils/auth';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { X, Check, Trash, GripVertical, Plus } from 'lucide-svelte';
+	import { X, Check, Trash, GripVertical, Plus, Menu } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import { notes } from '$lib/stores/notes';
 	import { tasks, type TaskList, type Task } from '$lib/stores/tasks';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Sortable from 'sortablejs';
+	import { isMd } from '$lib/stores/screen';
+	import { slide } from 'svelte/transition';
+	import { Sidebar } from './(components)';
 
 	interface Note {
 		fileName: string;
@@ -28,6 +30,7 @@
 	let newNoteName = '';
 	let newTaskName = '';
 	let selectedTab: 'notes' | 'tasks' = 'notes';
+	let sidebarOpen = false;
 
 	// Components
 	let sortableDiv: HTMLElement | null = null;
@@ -110,26 +113,6 @@
 		isEditing = false; // Switch back to viewing mode
 
 		toast.success('Note saved');
-
-		// const token = localStorage.getItem('token');
-		// const res = await fetch('/api/notes', {
-		// 	method: 'PUT',
-		// 	headers: {
-		// 		Authorization: `Bearer ${token}`,
-		// 		'Content-Type': 'application/json'
-		// 	},
-		// 	body: JSON.stringify({ fileName: selectedNote.fileName, content: noteContent })
-		// });
-
-		// if (res.ok) {
-		// 	parsedContent = parseMarkdown(noteContent); // Re-parse the content after saving
-		// 	isEditing = false; // Switch back to viewing mode
-		// 	toast.success('Note saved');
-		// 	console.log('Note saved');
-		// } else {
-		// 	toast.error('Failed to save note');
-		// 	alert('Failed to save note');
-		// }
 	}
 
 	// Delete a note
@@ -157,23 +140,6 @@
 			loadNoteContent({ fileName: newNoteName, content: '' });
 			newNoteName = '';
 		}
-
-		// const token = localStorage.getItem('token');
-		// const res = await fetch('/api/notes', {
-		// 	method: 'POST',
-		// 	headers: {
-		// 		Authorization: `Bearer ${token}`,
-		// 		'Content-Type': 'application/json'
-		// 	},
-		// 	body: JSON.stringify({ fileName: newNoteName, content: '' }) // Empty content for a new note
-		// });
-		// if (res.ok) {
-		// 	newNoteName = ''; // Reset the input field
-		// 	// fetchNotes(); // Refresh the notes list
-		// } else {
-		// 	const error = await res.json();
-		// 	alert(`Failed to add note: ${error.error}`);
-		// }
 	}
 
 	// Update the note content and apply the markdown parsing in real-time
@@ -188,13 +154,6 @@
 		isEditing = true;
 	}
 
-	// onMount(() => {
-	// 	if ($isAuthenticated) {
-
-	// 		fetchNotes();
-	// 	}
-	// });
-
 	function handleActionButton() {
 		if (selectedTab === 'notes') {
 			addNote();
@@ -204,6 +163,11 @@
 	}
 
 	function createTaskList() {
+		if (!newNoteName) {
+			toast.error('Please enter a name for the new task list');
+			return;
+		}
+
 		if (newNoteName.trim()) {
 			$tasks = [...$tasks, { name: newNoteName.trim(), tasks: [] }];
 			newNoteName = '';
@@ -255,83 +219,124 @@
 </script>
 
 <div class="fixed flex flex-row w-screen h-screen overflow-y-hidden">
-	<!-- Sidebar -->
-	<div class="min-w-[300px] flex flex-col bg-primary-foreground justify-between border-r h-screen">
-		<div class="flex flex-col h-full overflow-hidden">
-			<!-- Header -->
-			<div class="flex flex-col items-start w-full gap-2 px-6 pt-6">
-				<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
-				<Input
-					type="text"
-					placeholder={selectedTab === 'notes' ? 'New note' : 'New task list'}
-					bind:value={newNoteName}
-					class="w-full rounded"
-				/>
-				<Button on:click={handleActionButton} class="w-full"
-					>{selectedTab === 'notes' ? 'Add Note' : 'Add Task List'}</Button
-				>
-			</div>
+	{#if $isMd}
+		<!-- Sidebar -->
+		<Sidebar
+			bind:selectedTab
+			bind:newNoteName
+			bind:notes={$notes}
+			bind:tasks={$tasks}
+			bind:selectedNote
+			bind:selectedTaskList
+			{handleActionButton}
+			{loadNoteContent}
+			{deleteNote}
+			{loadTaskList}
+			{deleteTaskList}
+			{logout}
+		/>
+	{:else}
+		<!-- AppBar for smaller screens -->
+		<div
+			class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 bg-primary-foreground"
+		>
+			<h3 class="text-2xl font-bold text-primary">NoteNest</h3>
+			<Button variant="ghost" size="icon" on:click={() => (sidebarOpen = true)}>
+				<Menu class="w-4 h-4 text-primary" />
+			</Button>
+		</div>
 
-			<!-- Notes List -->
-			<div class="flex flex-col flex-grow w-full mt-8 overflow-hidden">
-				<Tabs.Root class="flex flex-col w-full h-full" bind:value={selectedTab}>
-					<div class="px-6">
-						<Tabs.List class="w-full">
-							<Tabs.Trigger value="notes" class="w-full">Notes</Tabs.Trigger>
-							<Tabs.Trigger value="tasks" class="w-full">Tasks</Tabs.Trigger>
-						</Tabs.List>
+		<!-- Drawer for sidebar on smaller screens -->
+		{#if sidebarOpen}
+			<div
+				in:slide
+				class="fixed top-0 left-0 z-50 w-screen h-full transition-transform duration-300 ease-in-out transform bg-primary-foreground"
+			>
+				<!-- Sidebar content (same as above, but in a drawer) -->
+				<div class="flex flex-col h-full overflow-hidden">
+					<!-- Header -->
+					<div class="flex flex-col items-start w-full gap-2 px-6 pt-6">
+						<div class="flex flex-row items-center justify-between w-full">
+							<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
+							<Button variant="ghost" size="sm" on:click={() => (sidebarOpen = false)}>
+								<X class="w-4 h-4 text-primary" />
+							</Button>
+						</div>
+						<Input
+							type="text"
+							placeholder={selectedTab === 'notes' ? 'New note' : 'New task list'}
+							bind:value={newNoteName}
+							class="w-full rounded"
+						/>
+						<Button on:click={handleActionButton} class="w-full"
+							>{selectedTab === 'notes' ? 'Add Note' : 'Add Task List'}</Button
+						>
 					</div>
-					<Tabs.Content value="notes" class="flex-grow overflow-y-auto">
-						<div class="flex flex-col w-full">
-							{#each $notes as note}
-								<button
-									class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
-										selectedNote && selectedNote.fileName === note.fileName
-											? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
-											: 'bg-primary-foreground text-primary hover:bg-primary/20'
-									}`}
-									on:click={() => loadNoteContent(note)}
-								>
-									<span class="truncate">{note.fileName}</span>
-									<Button variant="ghost" size="icon" on:click={() => deleteNote(note.fileName)}
-										><Trash class="w-4 h-4"></Trash></Button
-									>
-								</button>
-							{/each}
-						</div>
-					</Tabs.Content>
-					<Tabs.Content class="flex-grow overflow-y-auto" value="tasks">
-						<div class="flex flex-col w-full">
-							{#each $tasks as taskList}
-								<button
-									class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
-										selectedTaskList && selectedTaskList.name === taskList.name
-											? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
-											: 'bg-primary-foreground text-primary hover:bg-primary/20'
-									}`}
-									on:click={() => loadTaskList(taskList)}
-								>
-									{taskList.name}
-									<Button variant="ghost" size="icon" on:click={() => deleteTaskList(taskList.name)}
-										><Trash class="w-4 h-4"></Trash></Button
-									>
-								</button>
-							{/each}
-						</div>
-					</Tabs.Content>
-				</Tabs.Root>
-			</div>
-		</div>
 
-		<!-- Logout -->
-		<div class="flex flex-col items-center justify-center">
-			<Separator class="py-0 my-0" />
-			<div class="flex flex-row items-center justify-center w-full px-6 py-4">
-				<Button class="w-full" on:click={logout}>Logout</Button>
-			</div>
-		</div>
-	</div>
+					<!-- Notes List -->
+					<div class="flex flex-col flex-grow w-full mt-8 overflow-hidden">
+						<Tabs.Root class="flex flex-col w-full h-full" bind:value={selectedTab}>
+							<div class="px-6">
+								<Tabs.List class="w-full">
+									<Tabs.Trigger value="notes" class="w-full">Notes</Tabs.Trigger>
+									<Tabs.Trigger value="tasks" class="w-full">Tasks</Tabs.Trigger>
+								</Tabs.List>
+							</div>
+							<Tabs.Content value="notes" class="flex-grow overflow-y-auto">
+								<div class="flex flex-col w-full">
+									{#each $notes as note}
+										<button
+											class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
+												selectedNote && selectedNote.fileName === note.fileName
+													? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
+													: 'bg-primary-foreground text-primary hover:bg-primary/20'
+											}`}
+											on:click={() => loadNoteContent(note)}
+										>
+											<span class="truncate">{note.fileName}</span>
+											<Button variant="ghost" size="icon" on:click={() => deleteNote(note.fileName)}
+												><Trash class="w-4 h-4"></Trash></Button
+											>
+										</button>
+									{/each}
+								</div>
+							</Tabs.Content>
+							<Tabs.Content class="flex-grow overflow-y-auto" value="tasks">
+								<div class="flex flex-col w-full">
+									{#each $tasks as taskList}
+										<button
+											class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
+												selectedTaskList && selectedTaskList.name === taskList.name
+													? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
+													: 'bg-primary-foreground text-primary hover:bg-primary/20'
+											}`}
+											on:click={() => loadTaskList(taskList)}
+										>
+											{taskList.name}
+											<Button
+												variant="ghost"
+												size="icon"
+												on:click={() => deleteTaskList(taskList.name)}
+												><Trash class="w-4 h-4"></Trash></Button
+											>
+										</button>
+									{/each}
+								</div>
+							</Tabs.Content>
+						</Tabs.Root>
+					</div>
+				</div>
 
+				<!-- Logout -->
+				<div class="flex flex-col items-center justify-center">
+					<Separator class="py-0 my-0" />
+					<div class="flex flex-row items-center justify-center w-full px-6 py-4">
+						<Button class="w-full" on:click={logout}>Logout</Button>
+					</div>
+				</div>
+			</div>
+		{/if}
+	{/if}
 	<!-- Note Editor -->
 	<div class="flex flex-col w-full gap-8 px-6 py-4 text-black bg-white">
 		{#if selectedNote}
