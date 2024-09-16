@@ -6,12 +6,13 @@
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { logout } from '$lib/utils/auth';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { X, Check, Trash } from 'lucide-svelte';
+	import { X, Check, Trash, GripVertical } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import { notes } from '$lib/stores/notes';
-	import { tasks, type TaskList } from '$lib/stores/tasks';
+	import { tasks, type TaskList, type Task } from '$lib/stores/tasks';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import { Checkbox } from '$lib/components/ui/checkbox';
+	import Sortable from 'sortablejs';
 
 	interface Note {
 		fileName: string;
@@ -28,6 +29,34 @@
 	let newTaskName = '';
 	let selectedTab: 'notes' | 'tasks' = 'notes';
 
+	// Components
+	let sortableDiv: HTMLElement | null = null;
+
+	$: if (sortableDiv && selectedTaskList) {
+		new Sortable(sortableDiv, {
+			handle: '.dragger',
+			animation: 150,
+			onEnd: (evt: any) => {
+				if (!selectedTaskList) return;
+				const newTasks = Array.from(evt.to.children)
+					.map((el: any) => {
+						const taskId = el.getAttribute('data-task-id');
+						return selectedTaskList && selectedTaskList.tasks.find((task) => task.id === taskId);
+					})
+					.filter(Boolean) as Task[];
+
+				selectedTaskList.tasks = newTasks;
+				tasks.set(
+					$tasks.map((list) =>
+						selectedTaskList && list.name === selectedTaskList.name
+							? { ...list, tasks: newTasks }
+							: list
+					)
+				);
+			}
+		});
+	}
+
 	// Reset viewed content
 	function resetViewedContent() {
 		selectedNote = null;
@@ -39,6 +68,8 @@
 
 	// Load the selected note content
 	async function loadNoteContent(note: Note) {
+		resetViewedContent();
+
 		selectedNote = note;
 		noteContent = note.content;
 		parsedContent = parseMarkdown(noteContent); // Parse markdown on load
@@ -48,6 +79,8 @@
 
 	// Load the selected note content
 	async function loadTaskList(taskList: TaskList) {
+		resetViewedContent();
+
 		selectedTaskList = taskList;
 		isEditing = false; // Open in viewing mode
 	}
@@ -221,7 +254,7 @@
 	}
 </script>
 
-<div class="flex flex-row h-screen">
+<div class="fixed flex flex-row w-screen h-screen overflow-y-hidden">
 	<!-- Sidebar -->
 	<div class="min-w-[300px] pt-6 flex flex-col bg-primary-foreground justify-between border-r">
 		<div class="flex flex-col items-start">
@@ -240,7 +273,7 @@
 			</div>
 
 			<!-- Notes List -->
-			<div class="flex flex-col w-full h-full mt-8 overflow-y-scroll">
+			<div class="flex flex-col w-full h-full mt-8">
 				<Tabs.Root class="w-full" bind:value={selectedTab}>
 					<div class="px-6">
 						<Tabs.List class="w-full">
@@ -248,7 +281,7 @@
 							<Tabs.Trigger value="tasks" class="w-full">Tasks</Tabs.Trigger>
 						</Tabs.List>
 					</div>
-					<Tabs.Content value="notes" class="w-full h-full pt-4 overflow-y-scroll">
+					<Tabs.Content value="notes" class="w-full h-full pt-4 overflow-y-auto">
 						<div class="flex flex-col w-full h-full">
 							{#each $notes as note}
 								<button
@@ -267,7 +300,7 @@
 							{/each}
 						</div>
 					</Tabs.Content>
-					<Tabs.Content class="w-full h-full pt-4 overflow-y-scroll" value="tasks"
+					<Tabs.Content class="w-full h-full pt-4 overflow-y-auto" value="tasks"
 						><div class="flex flex-col w-full h-full">
 							{#each $tasks as taskList}
 								<button
@@ -342,12 +375,23 @@
 				</div>
 
 				<!-- Task List Content -->
-				<div class="flex flex-col items-start justify-start w-full h-full gap-4">
+				<div
+					class="flex flex-col items-start justify-start w-full h-full gap-4"
+					bind:this={sortableDiv}
+				>
 					{#each selectedTaskList.tasks as task}
 						{#if task && selectedTaskList}
+							<!-- Individual Task -->
 							<div
-								class="flex flex-row items-center justify-between w-full p-2 px-6 border rounded-md border-muted"
+								class="flex flex-row items-center justify-between w-full gap-4 p-2 px-6 border rounded-md border-muted"
+								data-task-id={task.id}
 							>
+								<div
+									class="flex items-center justify-center w-6 h-6 cursor-move dragger text-muted-foreground/40"
+								>
+									<GripVertical class="w-4 h-4" />
+								</div>
+
 								<div class="flex items-center w-full gap-6">
 									<Checkbox
 										bind:checked={task.completed}
