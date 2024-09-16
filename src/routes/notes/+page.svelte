@@ -2,19 +2,16 @@
 	import { marked } from 'marked'; // Import the Markdown parser
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import { logout } from '$lib/utils/auth';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { X, Check, Trash, GripVertical, Plus, Menu } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import { notes } from '$lib/stores/notes';
 	import { tasks, type TaskList, type Task } from '$lib/stores/tasks';
-	import * as Tabs from '$lib/components/ui/tabs';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Sortable from 'sortablejs';
-	import { isMd } from '$lib/stores/screen';
-	import { slide } from 'svelte/transition';
 	import { Sidebar } from './(components)';
+	import { isMd } from '$lib/stores/screen';
 
 	interface Note {
 		fileName: string;
@@ -71,22 +68,20 @@
 
 	// Load the selected note content
 	async function loadNoteContent(note: Note) {
-		resetViewedContent();
-
 		selectedNote = note;
+		selectedTaskList = null;
 		noteContent = note.content;
-		parsedContent = parseMarkdown(noteContent); // Parse markdown on load
-		isEditing = false; // Open in viewing mode
+		parsedContent = parseMarkdown(noteContent);
+		isEditing = false;
 		if (autoSaveTimer) clearTimeout(autoSaveTimer);
 		sidebarOpen = false;
 	}
 
 	// Load the selected note content
 	async function loadTaskList(taskList: TaskList) {
-		resetViewedContent();
-
+		selectedNote = null;
 		selectedTaskList = taskList;
-		isEditing = false; // Open in viewing mode
+		isEditing = false;
 		sidebarOpen = false;
 	}
 
@@ -221,126 +216,25 @@
 </script>
 
 <div class="fixed flex flex-row w-screen h-screen overflow-y-hidden">
-	{#if $isMd}
-		<!-- Sidebar -->
-		<Sidebar
-			bind:selectedTab
-			bind:newNoteName
-			bind:notes={$notes}
-			bind:tasks={$tasks}
-			bind:selectedNote
-			bind:selectedTaskList
-			{handleActionButton}
-			{loadNoteContent}
-			{deleteNote}
-			{loadTaskList}
-			{deleteTaskList}
-			{logout}
-		/>
-	{:else}
-		<!-- AppBar for smaller screens -->
-		<div
-			class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 bg-primary-foreground"
-		>
-			<h3 class="text-2xl font-bold text-primary">NoteNest</h3>
-			<Button variant="ghost" size="icon" on:click={() => (sidebarOpen = true)}>
-				<Menu class="w-4 h-4 text-primary" />
-			</Button>
-		</div>
+	<!-- Sidebar -->
+	<Sidebar
+		bind:selectedTab
+		bind:newNoteName
+		bind:notes={$notes}
+		bind:tasks={$tasks}
+		bind:selectedNote
+		bind:selectedTaskList
+		bind:sidebarOpen
+		{handleActionButton}
+		{loadNoteContent}
+		{deleteNote}
+		{loadTaskList}
+		{deleteTaskList}
+		{logout}
+	/>
 
-		<!-- Drawer for sidebar on smaller screens -->
-		{#if sidebarOpen}
-			<div
-				in:slide
-				class="fixed top-0 left-0 z-50 w-screen h-full transition-transform duration-300 ease-in-out transform bg-primary-foreground"
-			>
-				<!-- Sidebar content (same as above, but in a drawer) -->
-				<div class="flex flex-col h-full overflow-hidden">
-					<!-- Header -->
-					<div class="flex flex-col items-start w-full gap-2 px-6 pt-6">
-						<div class="flex flex-row items-center justify-between w-full">
-							<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
-							<Button variant="ghost" size="sm" on:click={() => (sidebarOpen = false)}>
-								<X class="w-4 h-4 text-primary" />
-							</Button>
-						</div>
-						<Input
-							type="text"
-							placeholder={selectedTab === 'notes' ? 'New note' : 'New task list'}
-							bind:value={newNoteName}
-							class="w-full rounded"
-						/>
-						<Button on:click={handleActionButton} class="w-full"
-							>{selectedTab === 'notes' ? 'Add Note' : 'Add Task List'}</Button
-						>
-					</div>
-
-					<!-- Notes List -->
-					<div class="flex flex-col flex-grow w-full mt-8 overflow-hidden">
-						<Tabs.Root class="flex flex-col w-full h-full" bind:value={selectedTab}>
-							<div class="px-6">
-								<Tabs.List class="w-full">
-									<Tabs.Trigger value="notes" class="w-full">Notes</Tabs.Trigger>
-									<Tabs.Trigger value="tasks" class="w-full">Tasks</Tabs.Trigger>
-								</Tabs.List>
-							</div>
-							<Tabs.Content value="notes" class="flex-grow overflow-y-auto">
-								<div class="flex flex-col w-full">
-									{#each $notes as note}
-										<button
-											class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
-												selectedNote && selectedNote.fileName === note.fileName
-													? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
-													: 'bg-primary-foreground text-primary hover:bg-primary/20'
-											}`}
-											on:click={() => loadNoteContent(note)}
-										>
-											<span class="truncate">{note.fileName}</span>
-											<Button variant="ghost" size="icon" on:click={() => deleteNote(note.fileName)}
-												><Trash class="w-4 h-4"></Trash></Button
-											>
-										</button>
-									{/each}
-								</div>
-							</Tabs.Content>
-							<Tabs.Content class="flex-grow overflow-y-auto" value="tasks">
-								<div class="flex flex-col w-full">
-									{#each $tasks as taskList}
-										<button
-											class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
-												selectedTaskList && selectedTaskList.name === taskList.name
-													? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
-													: 'bg-primary-foreground text-primary hover:bg-primary/20'
-											}`}
-											on:click={() => loadTaskList(taskList)}
-										>
-											{taskList.name}
-											<Button
-												variant="ghost"
-												size="icon"
-												on:click={() => deleteTaskList(taskList.name)}
-												><Trash class="w-4 h-4"></Trash></Button
-											>
-										</button>
-									{/each}
-								</div>
-							</Tabs.Content>
-						</Tabs.Root>
-					</div>
-				</div>
-
-				<!-- Logout -->
-				<div class="flex flex-col items-center justify-center">
-					<Separator class="py-0 my-0" />
-					<div class="flex flex-row items-center justify-center w-full px-6 py-4">
-						<Button class="w-full" on:click={logout}>Logout</Button>
-					</div>
-				</div>
-			</div>
-		{/if}
-	{/if}
 	<!-- Note Editor -->
-	<div class="flex flex-col w-full gap-8 px-6 py-4 text-black bg-white">
+	<div class="flex flex-col w-full gap-8 px-6 py-4 pt-6" class:mt-[56px]={!$isMd}>
 		{#if selectedNote}
 			<!-- Toolbar -->
 			<div class="flex flex-row items-center justify-between">
