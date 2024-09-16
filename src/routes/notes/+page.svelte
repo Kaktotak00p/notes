@@ -78,6 +78,7 @@
 		parsedContent = parseMarkdown(noteContent); // Parse markdown on load
 		isEditing = false; // Open in viewing mode
 		if (autoSaveTimer) clearTimeout(autoSaveTimer);
+		sidebarOpen = false;
 	}
 
 	// Load the selected note content
@@ -86,6 +87,7 @@
 
 		selectedTaskList = taskList;
 		isEditing = false; // Open in viewing mode
+		sidebarOpen = false;
 	}
 
 	// Parse markdown text into HTML
