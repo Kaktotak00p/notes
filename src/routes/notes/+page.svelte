@@ -28,6 +28,15 @@
 	let newTaskName = '';
 	let selectedTab: 'notes' | 'tasks' = 'notes';
 
+	// Reset viewed content
+	function resetViewedContent() {
+		selectedNote = null;
+		selectedTaskList = null;
+		noteContent = '';
+		parsedContent = '';
+		isEditing = false;
+	}
+
 	// Load the selected note content
 	async function loadNoteContent(note: Note) {
 		selectedNote = note;
@@ -93,6 +102,7 @@
 	// Delete a note
 	async function deleteNote(fileName: string) {
 		notes.deleteNote(fileName);
+		resetViewedContent();
 		toast.success('Note deleted');
 	}
 
@@ -165,10 +175,15 @@
 			$tasks = [...$tasks, { name: newNoteName.trim(), tasks: [] }];
 			newNoteName = '';
 		}
+
+		// Open the new task list
+		loadTaskList({ name: newNoteName.trim(), tasks: [] });
 	}
 
 	function deleteTaskList(listName: string) {
 		tasks.deleteTaskList(listName);
+		resetViewedContent();
+		toast.success('Task list deleted');
 	}
 
 	function addTask(listName: string) {
