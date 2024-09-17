@@ -1,4 +1,12 @@
-// src/routes/api/llama/+server.ts
+/* this app uses ollama API
+ * to expose the API run:
+ * 
+ * ollama serve
+ *
+ * By default this app uses llama2 model, to install it run:
+ *
+ * ollama pull llama2
+ */
 import type { RequestHandler } from './$types';
 import { json } from '@sveltejs/kit';
 
@@ -13,13 +21,14 @@ export const POST: RequestHandler = async ({ request }) => {
 		}
 
 		// LLaMA API running localy is exposed on localhost:11434
-		const llamaResponse = await fetch('http://localhost:11434/generate', {
+		const llamaResponse = await fetch('http://localhost:11434/generate', { // replace this with your own host
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
 				prompt,
+        model;"llama2" // change the model if you are not happy with the current behaviour
 				stream: false, // Turned off streaming for more consistent beheviour 
 			}),
 		});
