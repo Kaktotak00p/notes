@@ -1,35 +1,33 @@
-<script lang="ts">
-	import { marked } from 'marked'; // Import the Markdown parser
-	import Input from '$lib/components/ui/input/input.svelte';
-	import Button from '$lib/components/ui/button/button.svelte';
-	import { logout } from '$lib/utils/auth';
+<script lang="ts"> 
+	import AiButton from './(components)/AiButton.svelte';
+	import AiPanel from './(components)/AiPanel.svelte';
 	import { Textarea } from '$lib/components/ui/textarea';
-	import { X, Check, Trash, GripVertical, Plus, Menu } from 'lucide-svelte';
-	import { toast } from 'svelte-sonner';
+	import { X, Check } from 'lucide-svelte';
 	import { notes } from '$lib/stores/notes';
 	import { tasks, type TaskList, type Task } from '$lib/stores/tasks';
-	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Sortable from 'sortablejs';
 	import { Sidebar } from './(components)';
-	import { isMd } from '$lib/stores/screen';
+	import { toast } from 'svelte-sonner';
 
-	interface Note {
-		fileName: string;
-		content: string;
-	}
+	// AI panel state
+	let showAiPanel = false;
+	let aiInputText = '';
+	let aiResponse = '';
+	let isQuerying = false;
 
-	let selectedNote: Note | null = null;
-	let selectedTaskList: TaskList | null = null;
+  // Ui state
+	let selectedNote = null;
+	let selectedTaskList = null;
 	let noteContent = '';
 	let parsedContent = '';
-	let isEditing = false; // New variable to track if the user is in editing mode
-	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+	let isEditing = false;
+	let autoSaveTimer = null;
 	let newNoteName = '';
 	let newTaskName = '';
-	let selectedTab: 'notes' | 'tasks' = 'notes';
+	let selectedTab = 'notes';
 	let sidebarOpen = false;
-
-	// Components
+ 
+ // Components
 	let sortableDiv: HTMLElement | null = null;
 
 	$: if (sortableDiv && selectedTaskList) {
@@ -126,7 +124,7 @@
 			return;
 		}
 
-		// check if note already exists
+		// Check if note already exists
 		if ($notes.some((note) => note.fileName === newNoteName)) {
 			toast.error('Note already exists');
 			return;
@@ -213,6 +211,55 @@
 		selectedTaskList = $tasks.find((taskList) => taskList.name === listName) || null;
 		toast.success('Task status updated');
 	}
+
+	// Ai query
+	async function queryAI() {
+		if (!aiInputText) {
+			toast.error('Please enter text to query AI');
+			return;
+		}
+
+		isQuerying = true;
+		try {
+			const res = await fetch('/api/ai', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+				},
+				body: JSON.stringify({
+					apiUrl: 'your-ai-api-url', // Replace with actual API
+					systemPrompt: 'You are an assistant that helps with notes.',
+					userQuery: aiInputText,
+				}),
+			});
+			const data = await res.json();
+			aiResponse = data?.output || 'No response from AI';
+		} catch (error) {
+			toast.error('Error querying AI');
+		} finally {
+			isQuerying = false;
+		}
+	}
+
+  // Close ai panel
+	function closeAiPanel() {
+		showAiPanel = false;
+		aiInputText = '';
+		aiResponse = '';
+	}
+
+  // Capture selected text to a buffer
+	function captureSelectedText() {
+		const selection = window.getSelection()?.toString();
+		if (selection) {
+			aiInputText = selection;
+		}
+	}
+
+	// Auto-capture selected text in the note
+	$: if (selectedNote) {
+		document.addEventListener('mouseup', captureSelectedText);
+	}
 </script>
 
 <div class="fixed flex flex-row w-screen h-screen overflow-y-hidden">
@@ -225,47 +272,39 @@
 		bind:selectedNote
 		bind:selectedTaskList
 		bind:sidebarOpen
-		{handleActionButton}
-		{loadNoteContent}
-		{deleteNote}
-		{loadTaskList}
-		{deleteTaskList}
-		{logout}
 	/>
 
 	<!-- Note Editor -->
-	<div class="flex flex-col w-full gap-8 px-6 py-4 pt-6" class:mt-[56px]={!$isMd}>
+	<div class="flex flex-col w-full gap-8 px-6 py-4 pt-6">
 		{#if selectedNote}
 			<!-- Toolbar -->
 			<div class="flex flex-row items-center justify-between">
-				<Button class="" on:click={() => (selectedNote = null)}
-					><X class="w-4 h-4 mr-4"></X> Close</Button
-				>
-				<Button class="" on:click={saveNote}><Check class="w-4 h-4 mr-4"></Check> Save</Button>
+				<button on:click={() => (selectedNote = null)}>
+					<X class="w-4 h-4 mr-4" /> Close
+				</button>
+				<button on:click={saveNote}>
+					<Check class="w-4 h-4 mr-4" /> Save
+				</button>
 			</div>
 
 			<!-- Note Content -->
 			<div class="flex flex-col items-start justify-start h-full">
 				{#if isEditing}
 					<Textarea
-						class="w-full h-full border-none outline outline-muted-foreground/20 p-2.5 bg-muted text-black text-base resize-none focus-visible:outline-primary/20"
+						class="w-full h-full border-none p-2.5 bg-muted text-black text-base resize-none"
 						bind:value={noteContent}
 						on:input={updateContent}
-					></Textarea>
+					/>
 				{:else}
 					<button class="w-full h-full text-left" on:click={switchToEditing}>
-						<div class="flex flex-col h-full prose-sm prose max-w-none">
-							<div
-								class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5"
-							>
-								{@html parsedContent}
-							</div>
+						<div class="prose-sm prose max-w-none">
+							<div class="note-preview"> {@html parsedContent}</div>
 						</div>
 					</button>
 				{/if}
 			</div>
 		{:else if selectedTaskList}
-			<!--  Task List Editor -->
+			<!-- Task List Content -->
 			{#key selectedTaskList}
 				<!-- New task input -->
 				<div class="flex flex-row items-center justify-between gap-6">
@@ -321,4 +360,15 @@
 			</div>
 		{/if}
 	</div>
+
+	<!-- AI Button and Panel -->
+	<AiButton onClick={() => (showAiPanel = true)} />
+	<AiPanel
+		{showAiPanel}
+		{aiInputText}
+		{aiResponse}
+		{isQuerying}
+		{closeAiPanel}
+		{queryAI}
+	/>
 </div>
