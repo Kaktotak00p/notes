@@ -14,7 +14,8 @@ interface User {
   username: string;
 }
 
-function authenticate(request: RequestEvent['request']) {
+// Authenticate the user from the JWT token in the authorization header
+function authenticate(request: RequestEvent['request']): User | false {
   const authHeader = request.headers.get('authorization');
   if (!authHeader) return false;
 
@@ -26,7 +27,29 @@ function authenticate(request: RequestEvent['request']) {
   }
 }
 
-export async function GET({ request }) {
+// Helper function to extract metadata from the note content
+function extractMetadata(content: string): { username: string } | null {
+  const metaStart = content.indexOf('//// Meta\n');
+  const metaEnd = content.indexOf('////\n');
+  
+  if (metaStart !== -1 && metaEnd !== -1 && metaEnd > metaStart) {
+    const metadataContent = content.substring(metaStart + '//// Meta\n'.length, metaEnd).trim();
+    const metaLines = metadataContent.split('\n');
+    
+    const metadata: { username: string } = { username: '' };
+    metaLines.forEach(line => {
+      const [key, value] = line.split(':').map(part => part.trim());
+      if (key && value && key.toLowerCase() === 'username') {
+        metadata.username = value;
+      }
+    });
+    return metadata;
+  }
+  return null;
+}
+
+// GET: Fetch all notes created by the authenticated user
+export async function GET({ request }: { request: RequestEvent['request'] }) {
   const user = authenticate(request);
   if (!user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -36,13 +59,19 @@ export async function GET({ request }) {
   const noteFiles = fs.readdirSync(vaultDir).filter(file => file.endsWith('.md'));
   const notes = noteFiles.map(file => {
     const content = fs.readFileSync(path.join(vaultDir, file), 'utf-8');
-    return { fileName: file, content };
-  });
+    const metadata = extractMetadata(content);
+
+    if (metadata && metadata.username === user.username) {
+      return { fileName: file, content };
+    }
+    return null;
+  }).filter(Boolean);
 
   return new Response(JSON.stringify(notes), { status: 200 });
 }
 
-export async function POST({ request }) {
+// POST: Create a new note with metadata
+export async function POST({ request }: { request: RequestEvent['request'] }) {
   const user = authenticate(request);
   if (!user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -60,7 +89,7 @@ export async function POST({ request }) {
   }
 
   // Create the markdown content with metadata
-  const markdownContent = `# Note by ${user.username}\n\n${content || ''}\n`;
+  const markdownContent = `//// Meta\nusername: ${user.username}\n////\n\n${content || ''}\n`;
 
   // Write the content to a .md file
   fs.writeFileSync(filePath, markdownContent);
@@ -68,7 +97,8 @@ export async function POST({ request }) {
   return new Response(JSON.stringify({ message: 'Note added', fileName: sanitizedFileName }), { status: 201 });
 }
 
-export async function PUT({ request }) {
+// PUT: Update an existing note (only if the user is the creator)
+export async function PUT({ request }: { request: RequestEvent['request'] }) {
   const user = authenticate(request);
   if (!user) {
     return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
@@ -82,8 +112,15 @@ export async function PUT({ request }) {
     return new Response(JSON.stringify({ error: 'Note not found' }), { status: 404 });
   }
 
-  // Update the markdown content with the new content
-  const updatedContent = `${content}`;
+  // Ensure the user is the creator of the note
+  const existingContent = fs.readFileSync(filePath, 'utf-8');
+  const metadata = extractMetadata(existingContent);
+  if (!metadata || metadata.username !== user.username) {
+    return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 403 });
+  }
+
+  // Update the markdown content, keeping the metadata intact
+  const updatedContent = `//// Meta\nusername: ${user.username}\n////\n\n${content}`;
 
   // Write the updated content to the file
   fs.writeFileSync(filePath, updatedContent);

@@ -1,13 +1,24 @@
 <script lang="ts"> 
 	import AiButton from './(components)/AiButton.svelte';
 	import AiPanel from './(components)/AiPanel.svelte';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import { X, Check } from 'lucide-svelte';
+  import { marked } from 'marked'; // Import the Markdown parser
+	import Input from '$lib/components/ui/input/input.svelte';
+	import Button from '$lib/components/ui/button/button.svelte';
+	import { logout } from '$lib/utils/auth';
+	import Textarea from '$lib/components/ui/textarea';
+  import { X, Check, Trash, GripVertical, Plus, Menu } from 'lucide-svelte';
 	import { notes } from '$lib/stores/notes';
 	import { tasks, type TaskList, type Task } from '$lib/stores/tasks';
+  import { Checkbox } from '$lib/components/ui/checkbox';
 	import Sortable from 'sortablejs';
 	import { Sidebar } from './(components)';
 	import { toast } from 'svelte-sonner';
+  import { isMd } from '$lib/stores/screen';
+
+  interface Note {
+		fileName: string;
+		content: string;
+	}
 
 	// AI panel state
 	let showAiPanel = false;
@@ -16,12 +27,12 @@
 	let isQuerying = false;
 
   // Ui state
-	let selectedNote = null;
-	let selectedTaskList = null;
+	let selectedNote: Note | null = null;
+	let selectedTaskList: TaskList | null = null;
 	let noteContent = '';
 	let parsedContent = '';
 	let isEditing = false;
-	let autoSaveTimer = null;
+	let autoSaveTimer: ReturnType<typeof setTimeout> | null  = null;
 	let newNoteName = '';
 	let newTaskName = '';
 	let selectedTab = 'notes';
@@ -272,10 +283,16 @@
 		bind:selectedNote
 		bind:selectedTaskList
 		bind:sidebarOpen
+    {handleActionButton}
+		{loadNoteContent}
+		{deleteNote}
+		{loadTaskList}
+		{deleteTaskList}
+		{logout}
 	/>
 
 	<!-- Note Editor -->
-	<div class="flex flex-col w-full gap-8 px-6 py-4 pt-6">
+	<div class="flex flex-col w-full gap-8 px-6 py-4 pt-6" class:mt-[56px]={!$isMd}>
 		{#if selectedNote}
 			<!-- Toolbar -->
 			<div class="flex flex-row items-center justify-between">
@@ -291,14 +308,18 @@
 			<div class="flex flex-col items-start justify-start h-full">
 				{#if isEditing}
 					<Textarea
-						class="w-full h-full border-none p-2.5 bg-muted text-black text-base resize-none"
+						class="w-full h-full border-none outline outline-muted-foreground/20 p-2.5 bg-muted text-black text-base resize-none focus-visible:outline-primary/20"
 						bind:value={noteContent}
 						on:input={updateContent}
 					/>
 				{:else}
 					<button class="w-full h-full text-left" on:click={switchToEditing}>
-						<div class="prose-sm prose max-w-none">
-							<div class="note-preview"> {@html parsedContent}</div>
+          <div class="flex flex-col h-full prose-sm prose max-w-none">
+							<div
+								class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5"
+							>
+								{@html parsedContent}
+							</div>
 						</div>
 					</button>
 				{/if}

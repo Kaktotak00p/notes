@@ -7,6 +7,8 @@ interface User {
 
 const users: User[] = [
   { username: 'test', password: 'password' },
+  { username: '1', password: '1'},
+  { username: '2', password: '2'}
 ];
 
 export async function POST({ request }) {
