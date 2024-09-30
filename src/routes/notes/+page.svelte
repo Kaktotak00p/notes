@@ -1,19 +1,19 @@
 <script lang="ts"> 
 	import AiButton from './(components)/AiButton.svelte';
 	import AiPanel from './(components)/AiPanel.svelte';
-  import { marked } from 'marked'; // Import the Markdown parser
+	import { marked } from 'marked'; // Import the Markdown parser
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { logout } from '$lib/utils/auth';
-	import Textarea from '$lib/components/ui/textarea';
-  import { X, Check, Trash, GripVertical, Plus, Menu } from 'lucide-svelte';
+	import { Textarea } from '$lib/components/ui/textarea';
+	import { X, Check, Trash, GripVertical, Plus, Menu } from 'lucide-svelte';
+	import { toast } from 'svelte-sonner';
 	import { notes } from '$lib/stores/notes';
 	import { tasks, type TaskList, type Task } from '$lib/stores/tasks';
-  import { Checkbox } from '$lib/components/ui/checkbox';
+	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Sortable from 'sortablejs';
 	import { Sidebar } from './(components)';
-	import { toast } from 'svelte-sonner';
-  import { isMd } from '$lib/stores/screen';
+	import { isMd } from '$lib/stores/screen';
 
   interface Note {
 		fileName: string;
