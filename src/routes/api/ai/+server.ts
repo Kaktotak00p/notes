@@ -12,8 +12,8 @@ export const POST = async ({ request }) => {
 			},
 			body: JSON.stringify({
         model: "gemma:2b",
-				prompt: `Respond using plaintext.${systemPrompt} ${userQuery}`, // change plaintext to json, and set the correct scheme of the responce here
-        //format: "json",
+				prompt: `Respond using json.${systemPrompt} ${userQuery}`,
+        format: "json",
         stream: false
 			}),
 		});
