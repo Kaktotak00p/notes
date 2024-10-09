@@ -2,16 +2,19 @@ import { json } from '@sveltejs/kit';
 
 export const POST = async ({ request }) => {
 	try {
-		const { apiUrl, systemPrompt, userQuery } = await request.json();
+		const { systemPrompt, userQuery } = await request.json();
 
 		// Perform the API request to the external AI service
-		const response = await fetch(apiUrl, {
+		const response = await fetch("user_testing_url", {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
 			},
 			body: JSON.stringify({
-				prompt: `${systemPrompt} ${userQuery}`,
+        model: "gemma:2b",
+				prompt: `Respond using plaintext.${systemPrompt} ${userQuery}`, // change plaintext to json, and set the correct scheme of the responce here
+        //format: "json",
+        stream: false
 			}),
 		});
 
@@ -20,6 +23,7 @@ export const POST = async ({ request }) => {
 		}
     
 		const data = await response.json();
+    console.log(data)
 		return json(data);
 	} catch (error) {
 		console.error('Error in AI query request:', error);
