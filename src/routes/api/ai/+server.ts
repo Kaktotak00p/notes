@@ -12,12 +12,11 @@ export const POST = async ({ request }) => {
 			    },
 			    body: JSON.stringify({
             model: "gemma:2b",
-            prompt: `Assign a category to the note based on its name and content. Respond with JSON in the format: { "category": "CategoryName" }. ${systemPrompt} ${userQuery}`,
+            prompt: `${systemPrompt} ${userQuery}`,
             format: "json",
             stream: false
             }),
         });
-
         if (!response.ok) {
           console.log(response);
             return json({ error: 'Failed to fetch from the AI API' }, { status: 500 });
@@ -25,7 +24,7 @@ export const POST = async ({ request }) => {
 
         const data = await response.json();
         console.log(data.response);
-        return json(data.response);
+        return new Response (data.response);
     } catch (error) {
         console.error('Error in AI query request:', error);
         return json({ error: 'Error processing the request' }, { status: 500 });
