@@ -4,6 +4,7 @@ import { browser } from '$app/environment';
 interface Note {
     fileName: string;
     content: string;
+    category?: string; // Added category property
 }
 
 function createNotesStore() {
@@ -27,9 +28,9 @@ function createNotesStore() {
             }
             return updatedNotes;
         }),
-        updateNote: (fileName: string, content: string) => update(notes => {
+        updateNote: (fileName: string, content: string, category?: string) => update(notes => {
             const updatedNotes = notes.map(note =>
-                note.fileName === fileName ? { ...note, content } : note
+                note.fileName === fileName ? { ...note, content, category: category ?? note.category } : note
             );
             if (browser) {
                 localStorage.setItem('notes', JSON.stringify(updatedNotes));
@@ -47,3 +48,4 @@ function createNotesStore() {
 }
 
 export const notes = createNotesStore();
+
