@@ -1,48 +1,49 @@
 <script lang="ts">
-    import Input from '$lib/components/ui/input/input.svelte';
-    import Button from '$lib/components/ui/button/button.svelte';
-    import Separator from '$lib/components/ui/separator/separator.svelte';
-    import { Trash, Menu, X } from 'lucide-svelte';
-    import * as Tabs from '$lib/components/ui/tabs';
-    import type { TaskList } from '$lib/stores/tasks';
-    import { isMd } from '$lib/stores/screen';
-    import { slide } from 'svelte/transition';
+  import Input from '$lib/components/ui/input/input.svelte';
+  import Button from '$lib/components/ui/button/button.svelte';
+  import Separator from '$lib/components/ui/separator/separator.svelte';
+  import { Trash, Menu, X } from 'lucide-svelte';
+  import * as Tabs from '$lib/components/ui/tabs';
+  import type { TaskList } from '$lib/stores/tasks';
+  import { isMd } from '$lib/stores/screen';
+  import { slide } from 'svelte/transition';
 
-    interface Note {
-        fileName: string;
-        content: string;
-        category?: string;
-    }
+  interface Note {
+    fileName: string;
+    content: string;
+    category?: string;
+  }
 
-    export let selectedTab: 'notes' | 'tasks';
-    export let newNoteName: string;
-    export let newCategoryName: string;
-    export let notes: Note[];
-    export let tasks: TaskList[];
-    export let selectedNote: Note | null;
-    export let selectedTaskList: TaskList | null;
-    export let sidebarOpen: boolean = false;
-    export let handleActionButton: () => void;
-    export let loadNoteContent: (note: Note) => void;
-    export let deleteNote: (fileName: string) => void;
-    export let loadTaskList: (taskList: TaskList) => void;
-    export let deleteTaskList: (name: string) => void;
-    export let logout: () => void;
+  export let selectedTab: 'notes' | 'tasks';
+  export let newNoteName: string;
+  export let newCategoryName: string; // Ensure this is exported
+  export let notes: Note[];
+  export let tasks: TaskList[];
+  export let selectedNote: Note | null;
+  export let selectedTaskList: TaskList | null;
+  export let sidebarOpen: boolean = false;
+  export let handleActionButton: () => void;
+  export let loadNoteContent: (note: Note) => void;
+  export let deleteNote: (fileName: string) => void;
+  export let loadTaskList: (taskList: TaskList) => void;
+  export let deleteTaskList: (name: string) => void;
+  export let logout: () => void;
 
-    // New variables for categories
-    export let categories: string[] = [];
-    export let addCategory: () => void;
-    export let assignCategory: (note: Note, category: string) => void;
+  // New variables for categories
+  export let categories: string[] = [];
+  export let addCategory: () => void;
+  export let assignCategory: (note: Note, category: string) => void;
+  export let deleteCategory: (category: string) => void
 
-    // Function to get notes by category
-    function getNotesByCategory(category) {
-        return notes.filter(note => note.category === category);
-    }
+  // Function to get notes by category
+  function getNotesByCategory(category: string) {
+    return notes.filter(note => note.category === category);
+  }
 
-    // Function to get notes without a category
-    function getUncategorizedNotes() {
-        return notes.filter(note => !note.category || note.category === '');
-    }
+  // Function to get notes without a category
+  function getUncategorizedNotes() {
+    return notes.filter(note => !note.category || note.category === '');
+  }
 </script>
 
 {#if $isMd}
@@ -60,6 +61,17 @@
 				<Button on:click={handleActionButton} class="w-full">
 					{selectedTab === 'notes' ? 'Add Note' : 'Add Task List'}
 				</Button>
+        {#if selectedTab === 'notes'}
+          <Input
+            type="text"
+            placeholder="New category"
+            bind:value={newCategoryName} 
+            class="w-full rounded mt-2"
+          />
+          <Button on:click={addCategory} class="w-full"> 
+            Add Category
+          </Button>
+        {/if}
 			</div>
 
     <!-- Notes and Tasks List -->
@@ -78,6 +90,9 @@
                         <!-- Category Section -->
                         <div class="category">
                             <h3 class="px-6 py-2 font-semibold">{category}</h3>
+                            <Button variant="ghost" size="icon" on:click={() => deleteCategory(category)}>
+                              <Trash class="w-4 h-4" />
+                            </Button>
                             {#each getNotesByCategory(category) as note}
                                 <!-- Note Item -->
                                 <button

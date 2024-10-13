@@ -256,6 +256,29 @@
       }
   }
 
+      // Function to delete a category
+    function deleteCategory(categoryName: string) {
+        // Remove the category from the categories array
+        categories = categories.filter((category) => category !== categoryName);
+
+        // Update notes that have this category to be uncategorized
+        notes.set(
+            $notes.map((note) => {
+                if (note.category === categoryName) {
+                    return { ...note, category: '' };
+                }
+                return note;
+            })
+        );
+
+        // If the selected note's category was deleted, update it
+        if (selectedNote && selectedNote.category === categoryName) {
+            selectedNote = { ...selectedNote, category: '' };
+        }
+
+        toast.success(`Category "${categoryName}" deleted`);
+    }
+
   // Function to assign category to a note
   function assignCategory(note: Note, category: string) {
       notes.updateNote(note.fileName, note.content, category);
@@ -375,6 +398,7 @@
     bind:categories
 		{addCategory}
     {assignCategory}
+    {deleteCategory}
     {handleActionButton}
 		{loadNoteContent}
 		{deleteNote}
