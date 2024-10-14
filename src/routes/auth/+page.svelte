@@ -18,7 +18,7 @@
 			// Check if the authentication is successful
 			if (result.data?.success) {
 				toast.success(showSignup ? 'Signup successful!' : 'Login successful!');
-				goto('/notes');
+				goto('/private/notes');
 			} else {
 				error = result.data?.error || 'An error occurred';
 				toast.error(error);
