@@ -336,8 +336,9 @@
 					// Add extracted tasks to the task list
 					let i = 0;
 					aiResponse.tasks.forEach((task) => {
-						let taskNew = { id: i, content: task, completed: false };
+						let taskNew = { id: i.toString(), content: task, completed: false };
 						tasks.addTask(existingTaskList.name, taskNew);
+						i++;
 					});
 					toast.success('Tasks extracted and added to your task list');
 				} else {
