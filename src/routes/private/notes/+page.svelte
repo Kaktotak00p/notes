@@ -322,7 +322,9 @@
 
 			if (selectedText && selectedText.trim().length > 0) {
 				// Handle task extraction
-				if (Array.isArray(aiResponse) && aiResponse.length > 0) {
+				console.log(aiResponse)
+				console.log(Array.isArray(aiResponse))
+				if (Array.isArray(aiResponse.tasks) && aiResponse.tasks.length > 0) {
 					// Create a new task list or add to an existing one
 					const taskListName = note.fileName + ' Tasks';
 
@@ -333,9 +335,9 @@
 					}
 					// Add extracted tasks to the task list
 					let i = 0;
-					aiResponse.forEach((task) => {
-						let taks = { id: i, content: task, completed: false };
-						tasks.addTask(existingTaskList.name, task);
+					aiResponse.tasks.forEach((task) => {
+						let taskNew = { id: i, content: task, completed: false };
+						tasks.addTask(existingTaskList.name, taskNew);
 					});
 					toast.success('Tasks extracted and added to your task list');
 				} else {
