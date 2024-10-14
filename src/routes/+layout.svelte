@@ -1,31 +1,21 @@
 <script lang="ts">
 	import '../global.css';
-	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { browser } from '$app/environment';
-	import { goto } from '$app/navigation';
-	import { isAuthenticated } from '$lib/stores/auth';
+	import { invalidate } from '$app/navigation';
 	import { Toaster } from 'svelte-sonner';
 
-	let showFlashscreen = false;
+	export let data;
+	$: ({ session, supabase } = data);
 
-	$: if (browser && !$isAuthenticated) {
-		// Check if token is stored locally
-		const token = localStorage.getItem('token');
-		if (token) {
-			isAuthenticated.set(true);
-		} else {
-			console.log('Redirecting to login');
-			goto('/login');
-		}
-	}
+	let showFlashscreen = false;
 
 	onMount(() => {
 		if (browser) {
 			const hasSeenFlashscreen = localStorage.getItem('hasSeenFlashscreen');
 			const isRootToLoginRedirect =
-				document.referrer === window.location.origin + '/' && window.location.pathname === '/login';
+				document.referrer === window.location.origin + '/' && window.location.pathname === '/auth';
 			const isFirstLoad = !document.referrer;
 
 			if (!hasSeenFlashscreen || isRootToLoginRedirect || isFirstLoad) {
@@ -37,6 +27,14 @@
 				}, 1000);
 			}
 		}
+
+		const { data: authData } = supabase.auth.onAuthStateChange((_, newSession) => {
+			if (newSession?.expires_at !== session?.expires_at) {
+				invalidate('supabase:auth');
+			}
+		});
+
+		return () => authData.subscription.unsubscribe();
 	});
 </script>
 
