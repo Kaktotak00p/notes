@@ -150,19 +150,6 @@
 			// Open the new note
 			loadNoteContent({ fileName: newNoteName, content: '', category: '' });
 			newNoteName = '';
-			// Query AI for the category
-			try {
-				const aiResponse = await queryAICategory(newNote.fileName, newNote.content);
-				if (aiResponse && aiResponse.category) {
-					if (!categories.includes(aiResponse.category)) {
-						categories = [...categories, aiResponse.category];
-					}
-					assignCategory(newNote, aiResponse.category);
-					toast.success(`Category "${aiResponse.category}" assigned by AI`);
-				}
-			} catch (error) {
-				console.error('Error querying AI for category:', error);
-			}
 		}
 	}
 
@@ -331,14 +318,17 @@
 				if (Array.isArray(aiResponse) && aiResponse.length > 0) {
 					// Create a new task list or add to an existing one
 					const taskListName = note.fileName + ' Tasks';
+
 					let existingTaskList = $tasks.find((tl) => tl.name === taskListName);
 					if (!existingTaskList) {
-						tasks.addTaskList({ name: taskListName, tasks: [] });
+						tasks.addTaskList(taskListName);
 						existingTaskList = { name: taskListName, tasks: [] };
 					}
 					// Add extracted tasks to the task list
+					let i = 0;
 					aiResponse.forEach((task) => {
-						tasks.addTask(existingTaskList.name, { content: task, completed: false });
+						let taks = {id : i, content: task, completed:false}
+						tasks.addTask(existingTaskList.name, task);
 					});
 					toast.success('Tasks extracted and added to your task list');
 				} else {
@@ -406,22 +396,6 @@
 	function getSelectedText() {
 		const selection = window.getSelection();
 		return selection ? selection.toString() : '';
-	}
-
-	// Function to apply AI-assigned category
-	function applyAiCategory() {
-		if (aiResponse && selectedNote) {
-			const category = aiResponse.category;
-			if (category) {
-				if (!categories.includes(category)) {
-					categories = [...categories, category];
-				}
-				assignCategory(selectedNote, category);
-				toast.success(`Category "${category}" assigned by AI`);
-			} else {
-				toast.error('AI did not return a category');
-			}
-		}
 	}
 
 	// Close ai panel
@@ -576,13 +550,4 @@
 
 	<!-- AI Button and Panel -->
 	<AiButton onClick={handleAiButtonClick} />
-	<AiPanel
-		{showAiPanel}
-		{aiInputText}
-		{aiResponse}
-		{isQuerying}
-		{closeAiPanel}
-		{queryAI}
-		{applyAiCategory}
-	/>
 </div>
