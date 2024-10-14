@@ -267,7 +267,8 @@
 	}
 
 	// Function to assign category to a note
-	function assignCategory(note: Note, category: string) {
+	function assignCategory(note: Note | null, category: string) {
+		if (!note) return;
 		notes.updateNote(note.fileName, note.content, category);
 		// Refresh the selected note
 		selectedNote = { ...note, category };
@@ -327,7 +328,7 @@
 					// Add extracted tasks to the task list
 					let i = 0;
 					aiResponse.forEach((task) => {
-						let taks = {id : i, content: task, completed:false}
+						let taks = { id: i, content: task, completed: false };
 						tasks.addTask(existingTaskList.name, task);
 					});
 					toast.success('Tasks extracted and added to your task list');
@@ -424,6 +425,7 @@
 	<Sidebar
 		bind:selectedTab
 		bind:newNoteName
+		bind:newCategoryName
 		bind:notes={$notes}
 		bind:tasks={$tasks}
 		bind:selectedNote
@@ -460,7 +462,7 @@
 				<select
 					id="category"
 					bind:value={selectedNote.category}
-					on:change={(e) => assignCategory(selectedNote, e.target.value)}
+					on:change={(e) => assignCategory(selectedNote, e.currentTarget?.value)}
 					class="p-1 border rounded"
 				>
 					<option value="">Uncategorized</option>
