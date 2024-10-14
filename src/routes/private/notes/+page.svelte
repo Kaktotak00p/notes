@@ -21,10 +21,15 @@
 		category?: string;
 	}
 
+	interface AiResponse {
+		category: string;
+		tasks: string[];
+	}
+
 	// AI panel state
 	let showAiPanel = false;
 	let aiInputText = '';
-	let aiResponse = '';
+	let aiResponse: AiResponse | undefined = undefined;
 	let isQuerying = false;
 
 	// Ui state
@@ -311,8 +316,9 @@
 				})
 			});
 
+			// Define structure of aiResponse
 			const data = await res.json();
-			aiResponse = data || {};
+			aiResponse = data as AiResponse;
 
 			if (selectedText && selectedText.trim().length > 0) {
 				// Handle task extraction
@@ -403,7 +409,7 @@
 	function closeAiPanel() {
 		showAiPanel = false;
 		aiInputText = '';
-		aiResponse = '';
+		aiResponse = undefined;
 	}
 
 	// Capture selected text to a buffer
