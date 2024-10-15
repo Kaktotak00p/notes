@@ -15,12 +15,12 @@
 		House
 	} from 'lucide-svelte';
 	import * as Tabs from '$lib/components/ui/tabs';
-	import type { TaskList } from '$lib/stores/tasks';
+	import type { TaskList } from '$lib/stores/tasksOld';
 	import { isMd } from '$lib/stores/screen';
 	import { slide } from 'svelte/transition';
 	import type { Note } from '$lib/stores/notes';
 	import { notes } from '$lib/stores/notes';
-	import { tasks } from '$lib/stores/tasks';
+	import { tasks } from '$lib/stores/tasksOld';
 	import { goto } from '$app/navigation';
 	export let selectedTab: string;
 	export let newNoteName: string;
@@ -28,7 +28,7 @@
 	export let selectedNote: Note | null;
 	export let selectedTaskList: TaskList | null;
 	export let sidebarOpen: boolean = false;
-	export let addNote: () => void;
+	export let addNote: (categoryid: string | null) => void;
 	export let addTask: (content: string) => void;
 	export let loadNoteContent: (note: Note) => void;
 	export let deleteNote: (fileName: string) => void;
@@ -44,15 +44,15 @@
 
 	let showCategories: boolean = false;
 
-	// Function to get notes by category
-	function getNotesByCategory(category: string) {
-		return $notes.filter((note) => note.category === category);
-	}
+	// TODO Function to get notes by category
+	// function getNotesByCategory(category: string) {
+	// 	return $notes.filter((note) => note.category === category);
+	// }
 
-	// Function to get notes without a category
-	function getUncategorizedNotes() {
-		return $notes.filter((note) => !note.category || note.category === '');
-	}
+	// TODO Function to get notes without a category
+	// function getUncategorizedNotes() {
+	// 	return $notes.filter((note) => !note.category || note.category === '');
+	// }
 </script>
 
 <div
@@ -69,7 +69,7 @@
 			<!-- Add Note or Task List Buttons -->
 
 			<div class="flex flex-row justify-between w-full gap-2">
-				<Button on:click={addNote} class="w-full">
+				<Button on:click={() => addNote(null)} class="w-full">
 					<Notebook class="w-4 h-4 mr-2" />
 					Add Note</Button
 				>

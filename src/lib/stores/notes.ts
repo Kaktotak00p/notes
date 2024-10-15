@@ -1,5 +1,5 @@
 // src/stores/notesStore.ts
-import { writable } from 'svelte/store';
+import { writable, get } from 'svelte/store';
 import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 
 // Define the shape of a note object
@@ -8,9 +8,10 @@ export interface Note {
     userId: string;
     fileName: string;
     content: string;
-    category: string;
+    categoryid: string | null; // Matches the schema: can be null
     created_at: string;
-    deleted: boolean; // Add the deleted property
+    updated_at: string;
+    deleted: boolean; // Matches the schema: soft deletion column
 }
 
 function createNotesStore() {
@@ -34,7 +35,7 @@ function createNotesStore() {
         const { data, error } = await supabase
             .from('notes')
             .select('*')
-            .eq('userid', userId)
+            .eq('userId', userId)
             .eq('deleted', false); // Only fetch non-deleted notes
 
         if (error) {
@@ -80,7 +81,7 @@ function createNotesStore() {
     }
 
     // Function to create a new note
-    async function createNote(newNote: Omit<Note, 'id' | 'created_at'>): Promise<void> {
+    async function createNote(newNote: Omit<Note, 'id' | 'created_at' | 'updated_at'>): Promise<void> {
         const { data, error } = await supabase
             .from('notes')
             .insert(newNote)
@@ -94,16 +95,15 @@ function createNotesStore() {
         }
     }
 
-
     // Function to update a note in Supabase and the store
     async function updateNote(updatedNote: Note): Promise<void> {
         const { data, error } = await supabase
             .from('notes')
             .update({
-                fileName: updatedNote.fileName,
+                filename: updatedNote.fileName,
                 content: updatedNote.content,
-                category: updatedNote.category,
-                deleted: updatedNote.deleted // Make sure the deleted field is updated
+                categoryid: updatedNote.categoryid, // Update categoryid
+                deleted: updatedNote.deleted // Update deleted field
             })
             .eq('id', updatedNote.id)
             .select('*'); // Fetch the updated row
@@ -148,6 +148,13 @@ function createNotesStore() {
         }
     }
 
+    // Function to get the last created note
+    function getLastCreatedNote(): Note | undefined {
+        return get({ subscribe }).sort((a, b) =>
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+        )[0];
+    }
+
     return {
         subscribe,
         initialize,
@@ -155,9 +162,10 @@ function createNotesStore() {
         createNote,
         subscribeToRealtimeNotes,
         unsubscribeFromRealtimeNotes,
-        updateNote, // Keep the update function
-        moveToTrash, // Add the move to trash function
-        deletePermanently // Add the permanent delete function
+        updateNote,
+        moveToTrash,
+        deletePermanently,
+        getLastCreatedNote // Add the new function to the returned object
     };
 }
 

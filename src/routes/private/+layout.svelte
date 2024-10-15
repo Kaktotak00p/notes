@@ -7,7 +7,7 @@
 	import { X, Check, Trash, GripVertical, Plus, Menu } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
 	import { notes, type Note } from '$lib/stores/notes';
-	import { tasks, type TaskList, type Task } from '$lib/stores/tasks';
+	import { tasks, type TaskList, type Task } from '$lib/stores/tasksOld';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Sortable from 'sortablejs';
 	import { Sidebar } from './notes/(components)';
@@ -15,6 +15,8 @@
 	import { type Session, type SupabaseClient } from '@supabase/supabase-js';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
+	import { categories, type Category } from '$lib/stores/categories';
+	import { tasks as newtasks } from '$lib/stores/tasks';
 
 	export let data: {
 		session: Session;
@@ -45,7 +47,7 @@
 	let sidebarOpen = false;
 
 	// Categories state
-	let categories: string[] = ['Work', 'Personal', 'Ideas']; // Example categories
+
 	let newCategoryName = '';
 
 	// Components
@@ -53,6 +55,8 @@
 
 	onMount(() => {
 		notes.initialize(data.supabase);
+		categories.initialize(data.supabase);
+		newtasks.initialize(data.supabase);
 	});
 
 	$: if (sortableDiv && selectedTaskList) {
@@ -102,9 +106,8 @@
 	// Load the selected note content
 	async function loadNoteContent(note: Note) {
 		selectedNote = note;
-		selectedTaskList = null;
 		noteContent = note.content;
-		parsedContent = parseMarkdown(noteContent);
+		parsedContent = parseMarkdown(note.content);
 		isEditing = false;
 		if (autoSaveTimer) clearTimeout(autoSaveTimer);
 		sidebarOpen = false;
@@ -164,29 +167,23 @@
 	}
 
 	// Add a new note
-	async function addNote() {
-		if (!newNoteName) {
-			toast.error('Please enter a name for the new note');
-			return;
-		}
+	async function addNote(categoryid: string | null) {
+		const newNote: Omit<Note, 'id' | 'created_at' | 'updated_at'> = {
+			userId: data.session.user.id,
+			fileName: 'New Note',
+			content: '',
+			categoryid,
+			deleted: false
+		};
+		notes.createNote(newNote);
 
-		// Check if note already exists
-		if ($notes.some((note) => note.fileName === newNoteName)) {
-			toast.error('Note already exists');
-			return;
+		// Get back supabase note id
+		const supabaseNote = notes.getLastCreatedNote();
+		if (supabaseNote) {
+			loadNoteContent(supabaseNote as Note);
 		} else {
-			const newNote: Omit<Note, 'id' | 'created_at'> = {
-				userId: data.session.user.id,
-				fileName: newNoteName,
-				content: '',
-				category: '',
-				deleted: false
-			};
-			notes.createNote(newNote);
-
-			// Open the new note
-			loadNoteContent(newNote as Note);
-			newNoteName = '';
+			toast.error('Error creating note');
+			return;
 		}
 	}
 
@@ -202,14 +199,7 @@
 		isEditing = true;
 	}
 
-	function handleActionButton() {
-		if (selectedTab === 'notes') {
-			addNote();
-		} else if (selectedTab === 'tasks') {
-			createTaskList();
-		}
-	}
-
+	// TODO Remove
 	function createTaskList() {
 		if (!newNoteName) {
 			toast.error('Please enter a name for the new task list');
@@ -225,12 +215,14 @@
 		loadTaskList({ name: newNoteName.trim(), tasks: [] });
 	}
 
+	// TODO Remove
 	function deleteTaskList(listName: string) {
 		tasks.deleteTaskList(listName);
 		resetViewedContent();
 		toast.success('Task list deleted');
 	}
 
+	// TODO Change
 	function addTask(listName: string) {
 		if (newTaskName && newTaskName.trim()) {
 			tasks.addTask(listName, {
@@ -248,6 +240,7 @@
 		newTaskName = '';
 	}
 
+	// TODO Change
 	function deleteTask(listName: string, taskId: string) {
 		tasks.deleteTask(listName, taskId);
 
@@ -256,6 +249,7 @@
 		toast.success('Task deleted');
 	}
 
+	// TODO Change
 	function toggleTask(listName: string, taskId: string) {
 		console.log('toggleTask', listName, taskId);
 		tasks.toggleTask(listName, taskId);
@@ -266,61 +260,79 @@
 	}
 
 	// Function to add a new category
-	function addCategory() {
+	async function addCategory() {
 		if (!newCategoryName.trim()) {
 			toast.error('Please enter a category name');
 			return;
 		}
-		if (!categories.includes(newCategoryName.trim())) {
-			categories = [...categories, newCategoryName.trim()];
+		try {
+			await categories.createCategory({
+				userId: data.session.user.id,
+				category: newCategoryName.trim()
+			});
 			newCategoryName = '';
 			toast.success('Category added');
-		} else {
-			toast.error('Category already exists');
+		} catch (error) {
+			if (error instanceof Error && error.message === 'Category already exists') {
+				toast.error('Category already exists');
+			} else {
+				console.error('Error adding category:', error);
+				toast.error('Failed to add category');
+			}
 		}
 	}
 
 	// Function to delete a category
-	function deleteCategory(categoryName: string) {
-		// Remove the category from the categories array
-		categories = categories.filter((category) => category !== categoryName);
+	async function deleteCategory(categoryId: string) {
+		try {
+			// Delete the category from the database
+			await categories.deleteCategoryPermanently(categoryId);
 
-		// Update notes that have this category to be uncategorized
-		$notes.forEach((note) => {
-			if (note.category === categoryName) {
-				// Update note
-				const updatedNote = { ...note, category: '' };
-				notes.updateNote(updatedNote);
+			// Update notes that have this category to be uncategorized
+			$notes.forEach(async (note) => {
+				if (note.categoryid === categoryId) {
+					// Update note
+					const updatedNote = { ...note, categoryid: null };
+					await notes.updateNote(updatedNote);
+				}
+			});
+
+			// If the selected note's category was deleted, update it
+			if (selectedNote && selectedNote.categoryid === categoryId) {
+				selectedNote = { ...selectedNote, categoryid: null };
 			}
-		});
 
-		// If the selected note's category was deleted, update it
-		if (selectedNote && selectedNote.category === categoryName) {
-			selectedNote = { ...selectedNote, category: '' };
+			toast.success(`Category deleted successfully`);
+		} catch (error) {
+			console.error('Error deleting category:', error);
+			toast.error('Failed to delete category');
 		}
-
-		toast.success(`Category "${categoryName}" deleted`);
 	}
 
 	// Function to assign category to a note
-	function assignCategory(note: Note | null, category: string) {
+	async function assignCategory(note: Note | null, categoryId: string) {
 		if (!note) return;
 
-		const updatedNote = { ...note, category };
-		notes.updateNote(updatedNote);
+		const updatedNote = { ...note, categoryid: categoryId };
+		await notes.updateNote(updatedNote);
 		// Refresh the selected note
-		selectedNote = { ...note, category };
-		toast.success(`Category "${category}" assigned`);
+		selectedNote = { ...note, categoryid: categoryId };
+
+		// Get the category name for the toast message
+		const category = $categories.find((c) => c.id === categoryId);
+		const categoryName = category ? category.category : 'Unknown';
+
+		toast.success(`Category "${categoryName}" assigned`);
 	}
 
-	// Ai query
+	// TODO Ai query
 	async function queryAI({
 		note,
-		categories,
+		availableCategories,
 		selectedText
 	}: {
 		note: Note;
-		categories: string[];
+		availableCategories: Category[];
 		selectedText: string | null;
 	}) {
 		isQuerying = true;
@@ -334,7 +346,7 @@
 				userQuery = `Extract tasks from the following text:\n${selectedText}`;
 			} else {
 				// If no text is highlighted, categorize the note
-				systemPrompt = `You are an assistant that categorizes notes based on their filename and content. Available categories are: ${categories.join(', ')}. Please assign the most appropriate category from the available categories to the note. Respond with JSON in the format: { "category": "CategoryName" }.`;
+				systemPrompt = `You are an assistant that categorizes notes based on their filename and content. Available categories are: ${availableCategories.join(', ')}. Please assign the most appropriate category from the available categories to the note. Respond with JSON in the format: { "category": "CategoryName" }.`;
 				userQuery = `Note filename: ${note.fileName}\nNote content:\n${note.content}`;
 			}
 
@@ -379,11 +391,18 @@
 				}
 			} else {
 				// Handle categorization
-				if (aiResponse.category) {
-					if (!categories.includes(aiResponse.category)) {
-						categories = [...categories, aiResponse.category];
+				if (aiResponse && aiResponse.category) {
+					const existingCategory = $categories.find(
+						(c) => aiResponse && c.category === aiResponse.category
+					);
+					if (!existingCategory) {
+						categories.createCategory({
+							userId: data.session.user.id,
+							category: aiResponse.category
+						});
 					}
-					assignCategory(note, aiResponse.category);
+					const categoryToAssign = existingCategory || $categories[$categories.length - 1];
+					assignCategory(note, categoryToAssign.id);
 					toast.success(`Category "${aiResponse.category}" assigned by AI`);
 				} else {
 					toast.error('AI did not return a category');
@@ -397,7 +416,7 @@
 		}
 	}
 
-	// Function to query AI for category during note creation
+	// TODO Function to query AI for category during note creation
 	async function queryAICategory(noteName: string, noteContent: string) {
 		try {
 			const res = await fetch('/api/ai', {
@@ -419,7 +438,7 @@
 		}
 	}
 
-	// Function to handle AI button click
+	// TODO Function to handle AI button click
 	function handleAiButtonClick() {
 		if (!selectedNote) {
 			toast.error('No note selected');
@@ -430,7 +449,7 @@
 
 		queryAI({
 			note: selectedNote,
-			categories,
+			availableCategories: $categories,
 			selectedText
 		});
 	}
@@ -473,7 +492,6 @@
 			bind:selectedNote
 			bind:selectedTaskList
 			bind:sidebarOpen
-			bind:categories
 			{addCategory}
 			{assignCategory}
 			{deleteCategory}
