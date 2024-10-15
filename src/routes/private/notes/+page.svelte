@@ -3,7 +3,6 @@
 	import { marked } from 'marked'; // Import the Markdown parser
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import { logout } from '$lib/utils/auth';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { X, Check, Trash, GripVertical, Plus, Menu } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
@@ -13,10 +12,13 @@
 	import Sortable from 'sortablejs';
 	import { Sidebar } from './(components)';
 	import { isMd } from '$lib/stores/screen';
-	import { type Session } from '@supabase/supabase-js';
+	import { type Session, type SupabaseClient } from '@supabase/supabase-js';
+	import { onMount } from 'svelte';
+	import { goto } from '$app/navigation';
 
 	export let data: {
 		session: Session;
+		supabase: SupabaseClient;
 	};
 
 	interface AiResponse {
@@ -39,7 +41,7 @@
 	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let newNoteName = '';
 	let newTaskName = '';
-	let selectedTab: 'notes' | 'tasks' = 'notes';
+	let selectedTab: 'notes' | 'tasks' | 'home' | 'trash' | string = 'notes';
 	let sidebarOpen = false;
 
 	// Categories state
@@ -48,6 +50,10 @@
 
 	// Components
 	let sortableDiv: HTMLElement | null = null;
+
+	onMount(() => {
+		notes.initialize(data.supabase);
+	});
 
 	$: if (sortableDiv && selectedTaskList) {
 		new Sortable(sortableDiv, {
@@ -81,6 +87,16 @@
 		noteContent = '';
 		parsedContent = '';
 		isEditing = false;
+	}
+
+	// Logout function
+	async function logout() {
+		console.log('logging out');
+		await data.supabase.auth.signOut();
+
+		// Redirect to home
+		console.log('redirecting to home');
+		goto('/auth');
 	}
 
 	// Load the selected note content
@@ -446,9 +462,7 @@
 	}
 </script>
 
-<div
-	class="fixed flex flex-row w-screen h-screen gap-2 p-2 overflow-y-hidden bg-primary-foreground"
->
+<div class="fixed flex flex-row w-screen h-screen gap-2 p-2 overflow-y-hidden bg-background">
 	<!-- Greater Sidebar -->
 	<div class="flex flex-col h-full w-fit">
 		<!-- Persistent Sidebar -->
@@ -456,8 +470,6 @@
 			bind:selectedTab
 			bind:newNoteName
 			bind:newCategoryName
-			bind:notes={$notes}
-			bind:tasks={$tasks}
 			bind:selectedNote
 			bind:selectedTaskList
 			bind:sidebarOpen
@@ -465,7 +477,8 @@
 			{addCategory}
 			{assignCategory}
 			{deleteCategory}
-			{handleActionButton}
+			{addNote}
+			{addTask}
 			{loadNoteContent}
 			{deleteNote}
 			{loadTaskList}
@@ -477,10 +490,7 @@
 	</div>
 
 	<!-- Note Editor -->
-	<div
-		class="flex flex-col w-full gap-8 px-6 py-4 pt-6 bg-white rounded-md"
-		class:mt-[56px]={!$isMd}
-	>
+	<div class="flex flex-col w-full gap-8 px-6 py-4 pt-6 bg-white rounded-md">
 		{#if selectedNote}
 			<!-- Toolbar -->
 			<div class="flex flex-row items-center justify-between">

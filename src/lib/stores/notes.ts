@@ -1,7 +1,6 @@
 // src/stores/notesStore.ts
 import { writable } from 'svelte/store';
-import { supabase } from '$lib/database/supabase';
-import type { RealtimeChannel } from '@supabase/supabase-js';
+import type { RealtimeChannel, SupabaseClient } from '@supabase/supabase-js';
 
 // Define the shape of a note object
 export interface Note {
@@ -18,13 +17,24 @@ function createNotesStore() {
     const { subscribe, set, update } = writable<Note[]>([]);
 
     let notesSubscription: RealtimeChannel | null = null;
+    let supabase: SupabaseClient;
+
+    async function initialize(supabaseClient: SupabaseClient) {
+        supabase = supabaseClient;
+        const { data } = await supabase.auth.getUser();
+        if (data && data.user) {
+            fetchNotes(data.user.id);
+            subscribeToRealtimeNotes(data.user.id);
+        }
+    }
 
     // Function to fetch notes
     async function fetchNotes(userId: string): Promise<void> {
+        console.log('Fetching notes for user:', userId);
         const { data, error } = await supabase
             .from('notes')
             .select('*')
-            .eq('userId', userId)
+            .eq('userid', userId)
             .eq('deleted', false); // Only fetch non-deleted notes
 
         if (error) {
@@ -36,6 +46,7 @@ function createNotesStore() {
 
     // Function to start real-time syncing
     function subscribeToRealtimeNotes(userId: string): void {
+        console.log('Subscribing to real-time notes for user:', userId);
         notesSubscription = supabase
             .channel('public:notes')
             .on(
@@ -139,6 +150,7 @@ function createNotesStore() {
 
     return {
         subscribe,
+        initialize,
         fetchNotes,
         createNote,
         subscribeToRealtimeNotes,
@@ -149,4 +161,5 @@ function createNotesStore() {
     };
 }
 
+console.log("Initializing notes store");
 export const notes = createNotesStore();

@@ -27,12 +27,18 @@
 	}
 </script>
 
-<div class="flex flex-col items-center justify-center h-screen bg-primary-foreground">
+<div class="flex flex-col items-center justify-center h-screen gap-8 bg-background">
+	<p class="text-2xl font-bold">{showSignup ? 'Sign up to Note Nest' : 'Login into Note Nest'}</p>
+
+	{#if error}
+		<p class="text-red-500">{error}</p>
+	{/if}
+
 	{#if showSignup}
 		<form
 			method="POST"
 			action="?/signup"
-			class="flex flex-col items-center justify-center h-screen gap-4 w-60"
+			class="flex flex-col items-center justify-center gap-4 w-60"
 			use:enhance={({ formElement, formData, action, cancel }) => {
 				return async ({ result, update }) => {
 					handleAuthResult(result);
@@ -42,9 +48,6 @@
 				};
 			}}
 		>
-			{#if error}
-				<p class="text-red-500">{error}</p>
-			{/if}
 			<Input type="email" placeholder="Email" name="email" class="input-field" />
 			<Input type="password" placeholder="Password" name="password" class="input-field" />
 			<Button type="submit" class="w-full bg-primary">Sign up</Button>
@@ -56,7 +59,7 @@
 		<form
 			method="POST"
 			action="?/login"
-			class="flex flex-col items-center justify-center h-screen gap-4 w-60"
+			class="flex flex-col items-center justify-center gap-4 w-60"
 			use:enhance={({ formElement, formData, action, cancel }) => {
 				return async ({ result, update }) => {
 					handleAuthResult(result);
@@ -66,9 +69,6 @@
 				};
 			}}
 		>
-			{#if error}
-				<p class="text-red-500">{error}</p>
-			{/if}
 			<Input type="email" placeholder="Email" name="email" class="input-field" />
 			<Input type="password" placeholder="Password" name="password" class="input-field" />
 			<Button type="submit" class="w-full bg-primary">Login</Button>

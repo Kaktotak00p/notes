@@ -2,22 +2,34 @@
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { Trash, Menu, X, Notebook } from 'lucide-svelte';
+	import SidebarButton from './sidebar-button.svelte';
+	import * as Collapsible from '$lib/components/ui/collapsible';
+	import {
+		Trash,
+		Menu,
+		X,
+		Notebook,
+		CircleCheckBig,
+		ChevronRight,
+		Tag,
+		House
+	} from 'lucide-svelte';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import type { TaskList } from '$lib/stores/tasks';
 	import { isMd } from '$lib/stores/screen';
 	import { slide } from 'svelte/transition';
 	import type { Note } from '$lib/stores/notes';
+	import { notes } from '$lib/stores/notes';
+	import { tasks } from '$lib/stores/tasks';
 
-	export let selectedTab: 'notes' | 'tasks';
+	export let selectedTab: string;
 	export let newNoteName: string;
 	export let newCategoryName: string; // Ensure this is exported
-	export let notes: Note[];
-	export let tasks: TaskList[];
 	export let selectedNote: Note | null;
 	export let selectedTaskList: TaskList | null;
 	export let sidebarOpen: boolean = false;
-	export let handleActionButton: () => void;
+	export let addNote: () => void;
+	export let addTask: (content: string) => void;
 	export let loadNoteContent: (note: Note) => void;
 	export let deleteNote: (fileName: string) => void;
 	export let loadTaskList: (taskList: TaskList) => void;
@@ -30,66 +42,107 @@
 	export let assignCategory: (note: Note | null, category: string) => void;
 	export let deleteCategory: (category: string) => void;
 
+	let showCategories: boolean = false;
+
 	// Function to get notes by category
 	function getNotesByCategory(category: string) {
-		return notes.filter((note) => note.category === category);
+		return $notes.filter((note) => note.category === category);
 	}
 
 	// Function to get notes without a category
 	function getUncategorizedNotes() {
-		return notes.filter((note) => !note.category || note.category === '');
+		return $notes.filter((note) => !note.category || note.category === '');
 	}
 </script>
 
-{#if $isMd}
-	<div
-		class="min-w-[300px] flex flex-col bg-sidebar rounded-md justify-between border-r h-full border"
-	>
-		<div class="flex flex-col h-full overflow-hidden">
-			<!-- Header -->
-			<div class="flex flex-col items-start w-full gap-2 px-4 pt-4">
-				<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
+<div
+	class="min-w-[300px] flex flex-col bg-sidebar rounded-md justify-between border-r h-full border"
+>
+	<div class="flex flex-col h-full overflow-hidden">
+		<!-- Header -->
+		<div class="flex flex-col items-start w-full gap-2 px-4 pt-4">
+			<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
 
-				<!-- Search Input -->
-				<Input
-					type="text"
-					placeholder={selectedTab === 'notes' ? 'New note' : 'New task list'}
-					bind:value={newNoteName}
-					class="w-full rounded"
-				/>
+			<!-- Search Input -->
+			<Input type="text" placeholder="Search" class="w-full rounded" />
 
-				<!-- Add Note or Task List Buttons -->
+			<!-- Add Note or Task List Buttons -->
 
-				<div class="flex flex-row justify-between w-full gap-2">
-					<Button on:click={handleActionButton} class="w-full">Add Note</Button>
+			<div class="flex flex-row justify-between w-full gap-2">
+				<Button on:click={addNote} class="w-full">
+					<Notebook class="w-4 h-4 mr-2" />
+					Add Note</Button
+				>
 
-					<Button on:click={handleActionButton} class="w-full">Add Task</Button>
-				</div>
-				<!-- 
-				<Button on:click={handleActionButton} class="w-full">
-					{selectedTab === 'notes' ? 'Add Note' : 'Add Task List'}
-				</Button>
-				{#if selectedTab === 'notes'}
-					<Input
-						type="text"
-						placeholder="New category"
-						bind:value={newCategoryName}
-						class="w-full mt-2 rounded"
-					/>
-					<Button on:click={addCategory} class="w-full">Add Category</Button>
-				{/if} -->
-			</div>
-
-			<!-- List of options -->
-			<div class="flex flex-col flex-grow w-full px-4 mt-8 overflow-hidden">
-				<Button>
-					<Notebook class="w-4 h-4" />
-					Notes
+				<Button on:click={() => addTask('')} class="w-full">
+					<CircleCheckBig class="w-4 h-4 mr-2" />
+					Add Task
 				</Button>
 			</div>
+		</div>
 
-			<!-- Notes and Tasks List -->
-			<!-- <div class="flex flex-col flex-grow w-full mt-8 overflow-hidden">
+		<!-- List of options -->
+		<div class="flex flex-col flex-grow w-full gap-2 px-4 mt-8 overflow-hidden">
+			<SidebarButton
+				icon={House}
+				text="Home"
+				selected={selectedTab === 'home'}
+				onClick={() => (selectedTab = 'home')}
+			/>
+
+			<SidebarButton
+				icon={Notebook}
+				text="Notes"
+				selected={selectedTab === 'notes'}
+				onClick={() => (selectedTab = 'notes')}
+			/>
+
+			<SidebarButton
+				icon={CircleCheckBig}
+				text="Tasks"
+				selected={selectedTab === 'tasks'}
+				onClick={() => (selectedTab = 'tasks')}
+			/>
+
+			<Collapsible.Root bind:open={showCategories}>
+				<Collapsible.Trigger class="w-full">
+					<Button size="sm" variant="ghost" class="w-full">
+						<div class="flex flex-row items-center w-full gap-4">
+							<ChevronRight
+								class="w-4 h-4 transition-transform duration-300 {showCategories
+									? 'rotate-90'
+									: ''}"
+							/>
+							<p class="font-normal">Categories</p>
+						</div>
+					</Button>
+				</Collapsible.Trigger>
+				<Collapsible.Content>
+					<div class="flex flex-col gap-2 pl-6">
+						{#each categories as category}
+							<SidebarButton
+								icon={Tag}
+								text={category}
+								selected={selectedTab === category}
+								onClick={() => (selectedTab = category)}
+							/>
+						{/each}
+					</div>
+				</Collapsible.Content>
+			</Collapsible.Root>
+
+			<SidebarButton
+				icon={Trash}
+				text="Trash"
+				selected={selectedTab === 'trash'}
+				onClick={() => (selectedTab = 'trash')}
+			/>
+		</div>
+
+		<!-- Notes and Tasks List -->
+
+		<!-- Notes and Tasks List -->
+		<!-- <div class="flex flex-col flex-grow w-full mt-8 overflow-hidden">
 				<Tabs.Root class="flex flex-col w-full h-full" bind:value={selectedTab}>
 					<div class="px-6">
 						<Tabs.List class="w-full">
@@ -181,111 +234,13 @@
 					</Tabs.Content>
 				</Tabs.Root>
 			</div> -->
-		</div>
-
-		<!-- Logout -->
-		<div class="flex flex-col items-center justify-center">
-			<Separator class="py-0 my-0" />
-			<div class="flex flex-row items-center justify-center w-full px-6 py-4">
-				<Button class="w-full" on:click={logout}>Logout</Button>
-			</div>
-		</div>
-	</div>
-{:else}
-	<div
-		class="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 py-2 bg-primary-foreground"
-	>
-		<h3 class="text-2xl font-bold text-primary">NoteNest</h3>
-		<Button variant="ghost" size="icon" on:click={() => (sidebarOpen = true)}>
-			<Menu class="w-4 h-4 text-primary" />
-		</Button>
 	</div>
 
-	{#if sidebarOpen}
-		<div
-			in:slide
-			class="fixed top-0 left-0 z-50 w-screen h-full transition-transform duration-300 ease-in-out transform bg-primary-foreground"
-		>
-			<div class="flex flex-col h-full overflow-hidden">
-				<div class="flex flex-col items-start w-full gap-2 px-6 pt-6">
-					<div class="flex flex-row items-center justify-between w-full">
-						<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
-						<Button variant="ghost" size="sm" on:click={() => (sidebarOpen = false)}>
-							<X class="w-4 h-4 text-primary" />
-						</Button>
-					</div>
-
-					<Input
-						type="text"
-						placeholder={selectedTab === 'notes' ? 'New note' : 'New task list'}
-						bind:value={newNoteName}
-						class="w-full rounded"
-					/>
-					<Button on:click={handleActionButton} class="w-full">
-						{selectedTab === 'notes' ? 'Add Note' : 'Add Task List'}
-					</Button>
-				</div>
-				<!-- Notes List -->
-				<div class="flex flex-col flex-grow w-full mt-8 overflow-hidden">
-					<Tabs.Root class="flex flex-col w-full h-full" bind:value={selectedTab}>
-						<div class="px-6">
-							<Tabs.List class="w-full">
-								<Tabs.Trigger value="notes" class="w-full">Notes</Tabs.Trigger>
-								<Tabs.Trigger value="tasks" class="w-full">Tasks</Tabs.Trigger>
-							</Tabs.List>
-						</div>
-						<Tabs.Content value="notes" class="flex-grow overflow-y-auto">
-							<div class="flex flex-col w-full">
-								{#each notes as note}
-									<button
-										class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
-											selectedNote && selectedNote.fileName === note.fileName
-												? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
-												: 'bg-primary-foreground text-primary hover:bg-primary/20'
-										}`}
-										on:click={() => loadNoteContent(note)}
-									>
-										<span class="truncate">{note.fileName}</span>
-										<Button variant="ghost" size="icon" on:click={() => deleteNote(note.fileName)}>
-											<Trash class="w-4 h-4" />
-										</Button>
-									</button>
-								{/each}
-							</div>
-						</Tabs.Content>
-						<Tabs.Content class="flex-grow overflow-y-auto" value="tasks">
-							<div class="flex flex-col w-full">
-								{#each tasks as taskList}
-									<button
-										class={`flex flex-row w-full py-3 px-6 cursor-pointer overflow-hidden prose-sm prose max-w-none justify-between items-center text-left truncate ${
-											selectedTaskList && selectedTaskList.name === taskList.name
-												? 'bg-primary text-primary-foreground hover:bg-primary/20 hover:text-primary'
-												: 'bg-primary-foreground text-primary hover:bg-primary/20'
-										}`}
-										on:click={() => loadTaskList(taskList)}
-									>
-										{taskList.name}
-										<Button
-											variant="ghost"
-											size="icon"
-											on:click={() => deleteTaskList(taskList.name)}
-										>
-											<Trash class="w-4 h-4" />
-										</Button>
-									</button>
-								{/each}
-							</div>
-						</Tabs.Content>
-					</Tabs.Root>
-				</div>
-			</div>
-			<!-- Logout -->
-			<div class="flex flex-col items-center justify-center">
-				<Separator class="py-0 my-0" />
-				<div class="flex flex-row items-center justify-center w-full px-6 py-4">
-					<Button class="w-full" on:click={logout}>Logout</Button>
-				</div>
-			</div>
+	<!-- Logout -->
+	<div class="flex flex-col items-center justify-center">
+		<Separator class="py-0 my-0" />
+		<div class="flex flex-row items-center justify-center w-full px-6 py-4">
+			<Button class="w-full" on:click={logout}>Logout</Button>
 		</div>
-	{/if}
-{/if}
+	</div>
+</div>

@@ -4,7 +4,7 @@
 
 @layer base {
 	:root {
-		--background: 0 0% 100%;
+		--background: 30 0% 96%;
 		--foreground: 222.2 84% 4.9%;
 
 		--muted: 210 40% 96.1%;
@@ -19,8 +19,8 @@
 		--border: 214.3 31.8% 91.4%;
 		--input: 214.3 31.8% 91.4%;
 
-		--primary: 192 42% 79%;
-		--primary-foreground: 192 42% 15%;
+		--primary: 192 42% 15%;
+		--primary-foreground: 192 42% 79%;
 
 		--secondary: 210 40% 96.1%;
 		--secondary-foreground: 222.2 47.4% 11.2%;
