@@ -2,17 +2,12 @@
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import Separator from '$lib/components/ui/separator/separator.svelte';
-	import { Trash, Menu, X } from 'lucide-svelte';
+	import { Trash, Menu, X, Notebook } from 'lucide-svelte';
 	import * as Tabs from '$lib/components/ui/tabs';
 	import type { TaskList } from '$lib/stores/tasks';
 	import { isMd } from '$lib/stores/screen';
 	import { slide } from 'svelte/transition';
-
-	interface Note {
-		fileName: string;
-		content: string;
-		category?: string;
-	}
+	import type { Note } from '$lib/stores/notes';
 
 	export let selectedTab: 'notes' | 'tasks';
 	export let newNoteName: string;
@@ -32,7 +27,7 @@
 	// New variables for categories
 	export let categories: string[] = [];
 	export let addCategory: () => void;
-	export let assignCategory: (note: Note, category: string) => void;
+	export let assignCategory: (note: Note | null, category: string) => void;
 	export let deleteCategory: (category: string) => void;
 
 	// Function to get notes by category
@@ -47,17 +42,30 @@
 </script>
 
 {#if $isMd}
-	<div class="min-w-[300px] flex flex-col bg-primary-foreground justify-between border-r h-screen">
+	<div
+		class="min-w-[300px] flex flex-col bg-sidebar rounded-md justify-between border-r h-full border"
+	>
 		<div class="flex flex-col h-full overflow-hidden">
 			<!-- Header -->
-			<div class="flex flex-col items-start w-full gap-2 px-6 pt-6">
+			<div class="flex flex-col items-start w-full gap-2 px-4 pt-4">
 				<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
+
+				<!-- Search Input -->
 				<Input
 					type="text"
 					placeholder={selectedTab === 'notes' ? 'New note' : 'New task list'}
 					bind:value={newNoteName}
 					class="w-full rounded"
 				/>
+
+				<!-- Add Note or Task List Buttons -->
+
+				<div class="flex flex-row justify-between w-full gap-2">
+					<Button on:click={handleActionButton} class="w-full">Add Note</Button>
+
+					<Button on:click={handleActionButton} class="w-full">Add Task</Button>
+				</div>
+				<!-- 
 				<Button on:click={handleActionButton} class="w-full">
 					{selectedTab === 'notes' ? 'Add Note' : 'Add Task List'}
 				</Button>
@@ -69,11 +77,19 @@
 						class="w-full mt-2 rounded"
 					/>
 					<Button on:click={addCategory} class="w-full">Add Category</Button>
-				{/if}
+				{/if} -->
+			</div>
+
+			<!-- List of options -->
+			<div class="flex flex-col flex-grow w-full px-4 mt-8 overflow-hidden">
+				<Button>
+					<Notebook class="w-4 h-4" />
+					Notes
+				</Button>
 			</div>
 
 			<!-- Notes and Tasks List -->
-			<div class="flex flex-col flex-grow w-full mt-8 overflow-hidden">
+			<!-- <div class="flex flex-col flex-grow w-full mt-8 overflow-hidden">
 				<Tabs.Root class="flex flex-col w-full h-full" bind:value={selectedTab}>
 					<div class="px-6">
 						<Tabs.List class="w-full">
@@ -81,18 +97,15 @@
 							<Tabs.Trigger value="tasks" class="w-full">Tasks</Tabs.Trigger>
 						</Tabs.List>
 					</div>
-					<!-- Notes Tab Content -->
 					<Tabs.Content value="notes" class="flex-grow overflow-y-auto">
 						<div class="flex flex-col w-full">
 							{#each categories as category}
-								<!-- Category Section -->
 								<div class="category">
 									<h3 class="px-6 py-2 font-semibold">{category}</h3>
 									<Button variant="ghost" size="icon" on:click={() => deleteCategory(category)}>
 										<Trash class="w-4 h-4" />
 									</Button>
 									{#each getNotesByCategory(category) as note}
-										<!-- Note Item -->
 										<button
 											class={`flex flex-row w-full py-3 px-6 cursor-pointer justify-between items-center text-left truncate ${
 												selectedNote && selectedNote.fileName === note.fileName
@@ -116,11 +129,9 @@
 									{/each}
 								</div>
 							{/each}
-							<!-- Uncategorized Notes -->
 							<div class="category">
 								<h3 class="px-6 py-2 font-semibold">Uncategorized</h3>
 								{#each getUncategorizedNotes() as note}
-									<!-- Note Item -->
 									<button
 										class={`flex flex-row w-full py-3 px-6 cursor-pointer justify-between items-center text-left truncate ${
 											selectedNote && selectedNote.fileName === note.fileName
@@ -169,7 +180,7 @@
 						</div>
 					</Tabs.Content>
 				</Tabs.Root>
-			</div>
+			</div> -->
 		</div>
 
 		<!-- Logout -->

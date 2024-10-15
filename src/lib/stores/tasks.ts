@@ -14,7 +14,16 @@ export interface TaskList {
 
 function createTasksStore() {
     const storedTasks = browser ? localStorage.getItem('tasks') : null;
-    const initialTasks: TaskList[] = storedTasks ? JSON.parse(storedTasks) : [];
+    let initialTasks: TaskList[] = [];
+
+    if (storedTasks) {
+        try {
+            initialTasks = JSON.parse(storedTasks);
+        } catch (error) {
+            console.error('Error parsing stored tasks:', error);
+            // If there's an error parsing, we'll start with an empty array
+        }
+    }
 
     const { subscribe, set, update } = writable<TaskList[]>(initialTasks);
 

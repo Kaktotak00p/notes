@@ -1,6 +1,5 @@
 <script lang="ts">
 	import AiButton from './(components)/AiButton.svelte';
-	import AiPanel from './(components)/AiPanel.svelte';
 	import { marked } from 'marked'; // Import the Markdown parser
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
@@ -8,18 +7,17 @@
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { X, Check, Trash, GripVertical, Plus, Menu } from 'lucide-svelte';
 	import { toast } from 'svelte-sonner';
-	import { notes } from '$lib/stores/notes';
+	import { notes, type Note } from '$lib/stores/notes';
 	import { tasks, type TaskList, type Task } from '$lib/stores/tasks';
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Sortable from 'sortablejs';
 	import { Sidebar } from './(components)';
 	import { isMd } from '$lib/stores/screen';
+	import { type Session } from '@supabase/supabase-js';
 
-	interface Note {
-		fileName: string;
-		content: string;
-		category?: string;
-	}
+	export let data: {
+		session: Session;
+	};
 
 	interface AiResponse {
 		category: string;
@@ -122,8 +120,14 @@
 			return;
 		}
 
+		const updatedNote = {
+			...selectedNote,
+			fileName: selectedNote.fileName,
+			content: noteContent
+		};
+
 		// Save or update note in store
-		notes.updateNote(selectedNote.fileName, noteContent);
+		notes.updateNote(updatedNote);
 
 		parsedContent = parseMarkdown(noteContent); // Re-parse the content after saving
 		isEditing = false; // Switch back to viewing mode
@@ -133,7 +137,12 @@
 
 	// Delete a note
 	async function deleteNote(fileName: string) {
-		notes.deleteNote(fileName);
+		if (!selectedNote) {
+			toast.error('No note selected');
+			return;
+		}
+
+		notes.moveToTrash(selectedNote.id);
 		resetViewedContent();
 		toast.success('Note deleted');
 	}
@@ -150,10 +159,17 @@
 			toast.error('Note already exists');
 			return;
 		} else {
-			notes.addNote({ fileName: newNoteName, content: '', category: '' });
+			const newNote: Omit<Note, 'id' | 'created_at'> = {
+				userId: data.session.user.id,
+				fileName: newNoteName,
+				content: '',
+				category: '',
+				deleted: false
+			};
+			notes.createNote(newNote);
 
 			// Open the new note
-			loadNoteContent({ fileName: newNoteName, content: '', category: '' });
+			loadNoteContent(newNote as Note);
 			newNoteName = '';
 		}
 	}
@@ -254,14 +270,13 @@
 		categories = categories.filter((category) => category !== categoryName);
 
 		// Update notes that have this category to be uncategorized
-		notes.set(
-			$notes.map((note) => {
-				if (note.category === categoryName) {
-					return { ...note, category: '' };
-				}
-				return note;
-			})
-		);
+		$notes.forEach((note) => {
+			if (note.category === categoryName) {
+				// Update note
+				const updatedNote = { ...note, category: '' };
+				notes.updateNote(updatedNote);
+			}
+		});
 
 		// If the selected note's category was deleted, update it
 		if (selectedNote && selectedNote.category === categoryName) {
@@ -274,7 +289,9 @@
 	// Function to assign category to a note
 	function assignCategory(note: Note | null, category: string) {
 		if (!note) return;
-		notes.updateNote(note.fileName, note.content, category);
+
+		const updatedNote = { ...note, category };
+		notes.updateNote(updatedNote);
 		// Refresh the selected note
 		selectedNote = { ...note, category };
 		toast.success(`Category "${category}" assigned`);
@@ -322,8 +339,8 @@
 
 			if (selectedText && selectedText.trim().length > 0) {
 				// Handle task extraction
-				console.log(aiResponse)
-				console.log(Array.isArray(aiResponse))
+				console.log(aiResponse);
+				console.log(Array.isArray(aiResponse));
 				if (Array.isArray(aiResponse.tasks) && aiResponse.tasks.length > 0) {
 					// Create a new task list or add to an existing one
 					const taskListName = note.fileName + ' Tasks';
@@ -429,31 +446,41 @@
 	}
 </script>
 
-<div class="fixed flex flex-row w-screen h-screen overflow-y-hidden">
-	<!-- Sidebar -->
-	<Sidebar
-		bind:selectedTab
-		bind:newNoteName
-		bind:newCategoryName
-		bind:notes={$notes}
-		bind:tasks={$tasks}
-		bind:selectedNote
-		bind:selectedTaskList
-		bind:sidebarOpen
-		bind:categories
-		{addCategory}
-		{assignCategory}
-		{deleteCategory}
-		{handleActionButton}
-		{loadNoteContent}
-		{deleteNote}
-		{loadTaskList}
-		{deleteTaskList}
-		{logout}
-	/>
+<div
+	class="fixed flex flex-row w-screen h-screen gap-2 p-2 overflow-y-hidden bg-primary-foreground"
+>
+	<!-- Greater Sidebar -->
+	<div class="flex flex-col h-full w-fit">
+		<!-- Persistent Sidebar -->
+		<Sidebar
+			bind:selectedTab
+			bind:newNoteName
+			bind:newCategoryName
+			bind:notes={$notes}
+			bind:tasks={$tasks}
+			bind:selectedNote
+			bind:selectedTaskList
+			bind:sidebarOpen
+			bind:categories
+			{addCategory}
+			{assignCategory}
+			{deleteCategory}
+			{handleActionButton}
+			{loadNoteContent}
+			{deleteNote}
+			{loadTaskList}
+			{deleteTaskList}
+			{logout}
+		/>
+
+		<!-- Explorer -->
+	</div>
 
 	<!-- Note Editor -->
-	<div class="flex flex-col w-full gap-8 px-6 py-4 pt-6" class:mt-[56px]={!$isMd}>
+	<div
+		class="flex flex-col w-full gap-8 px-6 py-4 pt-6 bg-white rounded-md"
+		class:mt-[56px]={!$isMd}
+	>
 		{#if selectedNote}
 			<!-- Toolbar -->
 			<div class="flex flex-row items-center justify-between">

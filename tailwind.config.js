@@ -16,6 +16,7 @@ const config = {
 		},
 		extend: {
 			colors: {
+				sidebar: '#f2f2f2',
 				border: 'hsl(var(--border) / <alpha-value>)',
 				input: 'hsl(var(--input) / <alpha-value>)',
 				ring: 'hsl(var(--ring) / <alpha-value>)',
