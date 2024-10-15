@@ -21,7 +21,7 @@
 	import type { Note } from '$lib/stores/notes';
 	import { notes } from '$lib/stores/notes';
 	import { tasks } from '$lib/stores/tasks';
-
+	import { goto } from '$app/navigation';
 	export let selectedTab: string;
 	export let newNoteName: string;
 	export let newCategoryName: string; // Ensure this is exported
@@ -87,21 +87,30 @@
 				icon={House}
 				text="Home"
 				selected={selectedTab === 'home'}
-				onClick={() => (selectedTab = 'home')}
+				onClick={() => {
+					selectedTab = 'home';
+					goto('/private');
+				}}
 			/>
 
 			<SidebarButton
 				icon={Notebook}
 				text="Notes"
 				selected={selectedTab === 'notes'}
-				onClick={() => (selectedTab = 'notes')}
+				onClick={() => {
+					selectedTab = 'notes';
+					goto('/private/notes');
+				}}
 			/>
 
 			<SidebarButton
 				icon={CircleCheckBig}
 				text="Tasks"
 				selected={selectedTab === 'tasks'}
-				onClick={() => (selectedTab = 'tasks')}
+				onClick={() => {
+					selectedTab = 'tasks';
+					goto('/private/tasks');
+				}}
 			/>
 
 			<Collapsible.Root bind:open={showCategories}>
@@ -135,7 +144,10 @@
 				icon={Trash}
 				text="Trash"
 				selected={selectedTab === 'trash'}
-				onClick={() => (selectedTab = 'trash')}
+				onClick={() => {
+					selectedTab = 'trash';
+					goto('/private/trash');
+				}}
 			/>
 		</div>
 
@@ -240,7 +252,7 @@
 	<div class="flex flex-col items-center justify-center">
 		<Separator class="py-0 my-0" />
 		<div class="flex flex-row items-center justify-center w-full px-6 py-4">
-			<Button class="w-full" on:click={logout}>Logout</Button>
+			<Button class="w-full" variant="destructive" on:click={logout}>Logout</Button>
 		</div>
 	</div>
 </div>
