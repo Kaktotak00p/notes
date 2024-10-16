@@ -401,18 +401,12 @@
 		<!-- Persistent Sidebar -->
 		<Sidebar
 			bind:selectedTab
-			bind:newNoteName
-			bind:newCategoryName
-			bind:selectedTaskList
-			bind:sidebarOpen
 			email={data.session.user.email ?? 'No email connected'}
 			{addCategory}
 			{assignCategory}
 			{deleteCategory}
 			{addNote}
 			{addTask}
-			{loadTaskList}
-			{deleteTaskList}
 			{logout}
 		/>
 	</div>

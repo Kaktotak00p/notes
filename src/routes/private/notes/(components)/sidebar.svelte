@@ -12,12 +12,10 @@
 		CircleCheckBig,
 		ChevronRight,
 		Tag,
-		House
+		House,
+		Archive
 	} from 'lucide-svelte';
-	import * as Tabs from '$lib/components/ui/tabs';
-	import type { TaskList } from '$lib/stores/tasksOld';
-	import { isMd } from '$lib/stores/screen';
-	import { slide } from 'svelte/transition';
+
 	import type { Note } from '$lib/stores/notes';
 	import { notes } from '$lib/stores/notes';
 	import { tasks } from '$lib/stores/tasksOld';
@@ -26,14 +24,9 @@
 
 	export let email: string;
 	export let selectedTab: string;
-	export let newNoteName: string;
-	export let newCategoryName: string; // Ensure this is exported
-	export let selectedTaskList: TaskList | null;
-	export let sidebarOpen: boolean = false;
+
 	export let addNote: (categoryid: string | null) => void;
 	export let addTask: (content: string) => void;
-	export let loadTaskList: (taskList: TaskList) => void;
-	export let deleteTaskList: (name: string) => void;
 	export let logout: () => void;
 
 	// New variables for categories
@@ -135,9 +128,19 @@
 								icon={Tag}
 								text={category.category}
 								selected={selectedTab === category.id}
-								onClick={() => (selectedTab = category.id)}
+								onClick={() => {
+									selectedTab = category.category;
+									// goto('private/notes', )
+								}}
 							/>
 						{/each}
+
+						<SidebarButton
+							icon={Archive}
+							text="Uncategorized"
+							selected={selectedTab === 'uncategorized'}
+							onClick={() => (selectedTab = 'uncategorized')}
+						/>
 					</div>
 				</Collapsible.Content>
 			</Collapsible.Root>
