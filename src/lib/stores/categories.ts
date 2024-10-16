@@ -24,6 +24,27 @@ function createCategoriesStore() {
         }
     }
 
+    async function getCategory(id: string | undefined | null): Promise<Category | null> {
+        if (!id) return null;
+
+        const { data, error } = await supabase
+            .from('categories')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (error) {
+            console.error('Error fetching category:', error);
+            return null
+        }
+
+        if (!data) {
+            return null
+        }
+
+        return data as Category;
+    }
+
     // Function to fetch categories
     async function fetchCategories(userId: string): Promise<void> {
         console.log('Fetching categories for user:', userId);
@@ -125,6 +146,7 @@ function createCategoriesStore() {
     }
 
     return {
+        getCategory,
         subscribe,
         initialize,
         fetchCategories,

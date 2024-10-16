@@ -110,10 +110,9 @@
 			categoryid,
 			deleted: false
 		};
-		notes.createNote(newNote);
+		const supabaseNote = await notes.createNote(newNote);
 
 		// Get back supabase note id
-		const supabaseNote = notes.getLastCreatedNote();
 		console.log('Supabase note: ', supabaseNote);
 		if (supabaseNote) {
 			selectedNote.set(supabaseNote);

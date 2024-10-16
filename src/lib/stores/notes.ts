@@ -21,6 +21,7 @@ export interface NoteStore {
     createNote: (newNote: Omit<Note, 'id' | 'created_at' | 'updated_at'>) => Promise<Note | null>;
     subscribeToRealtimeNotes: (userId: string) => void;
     unsubscribeFromRealtimeNotes: () => void;
+    getDeletedNotes: () => Promise<Note[]>;
     updateNote: (updatedNote: Note) => Promise<Note | null>;
     moveToTrash: (noteId: string) => Promise<Note | null>;
     deletePermanently: (noteId: string) => Promise<void>;
@@ -39,8 +40,10 @@ function createNotesStore(): NoteStore {
         supabase = supabaseClient;
         const { data } = await supabase.auth.getUser();
         if (data && data.user) {
-            fetchNotes(data.user.id);
+            await fetchNotes(data.user.id);  // Wait for notes to be fetched
             subscribeToRealtimeNotes(data.user.id);
+        } else {
+            console.log("Initializing without user")
         }
     }
 
@@ -202,11 +205,29 @@ function createNotesStore(): NoteStore {
         return lastNote;
     }
 
+    // Function to retrieve all deleted notes
+    async function getDeletedNotes(): Promise<Note[]> {
+        const { data, error } = await supabase
+            .from('notes')
+            .select('*')
+            .eq('deleted', true)
+            .order('updated_at', { ascending: false });
+
+        if (error) {
+            console.error('Error fetching deleted notes:', error);
+            return [];
+        } else {
+            console.log('Fetched deleted notes:', data);
+            return data || [];
+        }
+    }
+
     return {
         subscribe,
         initialize,
         fetchNotes,
         createNote,
+        getDeletedNotes,
         subscribeToRealtimeNotes,
         unsubscribeFromRealtimeNotes,
         updateNote,

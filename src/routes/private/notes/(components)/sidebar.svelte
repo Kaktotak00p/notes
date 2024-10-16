@@ -17,7 +17,8 @@
 		Tag,
 		House,
 		Archive,
-		CirclePlus
+		CirclePlus,
+		Check
 	} from 'lucide-svelte';
 
 	import { categories } from '$lib/stores/categories';
@@ -168,8 +169,8 @@
 											required
 										/>
 
-										<div class="justify-end w-full pt-6">
-											<Button type="submit">Save</Button>
+										<div class="flex justify-end w-full pt-6">
+											<Button type="submit"><Check class="w-4 h-4 mr-4"></Check> Save</Button>
 										</div>
 									</form>
 								</Dialog.Header>

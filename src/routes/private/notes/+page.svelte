@@ -7,12 +7,23 @@
 	import { categories } from '$lib/stores/categories';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
+	import { Input } from '$lib/components/ui/input';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Select from '$lib/components/ui/select';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { Label } from '$lib/components/ui/label';
 	import { toast } from 'svelte-sonner';
-	import { Trash, Ellipsis } from 'lucide-svelte';
+	import { Trash, Ellipsis, Check } from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { Badge } from '$lib/components/ui/badge';
+	import type { Session, SupabaseClient } from '@supabase/supabase-js';
+	import { enhance } from '$app/forms';
+
+	export let data: {
+		session: Session;
+		supabase: SupabaseClient;
+	};
 
 	let notesList: Note[] = [];
 	let isEditing: boolean = true;
@@ -21,10 +32,18 @@
 	let fileName = '';
 	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let textareaRef: any;
+	let categoryDialogOpen: boolean = false;
+	let newCategoryName: string = '';
 
 	// Get the categoryid from the URL
 	$: categoryId = $page.url.searchParams.get('categoryid');
-	$: categoryName = $categories.find((c) => c.id === categoryId)?.category ?? 'Uncategorized';
+	$: categoryName =
+		categoryId === 'uncategorized'
+			? 'Uncategorized'
+			: categoryId
+				? $categories.find((c) => c.id === categoryId)?.category
+				: 'All Notes';
+	$: newCategoryName = categoryName ?? '';
 
 	// Filter notes based on the selected category
 	$: filteredNotes = derived([notes, categories], ([$notes, $categories]) => {
@@ -51,11 +70,52 @@
 
 	onDestroy(unsubscribe);
 
+	// Category renaming
+	function handleCategoryRename(result: { type: string; data?: any }) {
+		console.log(result);
+		if (result.type === 'failure') {
+			console.error(result.data?.error);
+			toast.error(result.data?.error || 'An error occurred');
+		} else {
+			console.log('success');
+			if (result.data?.success) {
+				categoryDialogOpen = false;
+				toast.success(`Category renamed!`);
+				// The store should update automatically due to realtime subscription
+			} else {
+				let error = result.data?.error || 'An error occurred';
+				toast.error(error);
+			}
+		}
+	}
+
 	// Update the note content and apply the markdown parsing in real-time
 	function updateContent(event: any) {
 		noteContent = event.target.value;
 		parsedContent = parseMarkdown(noteContent); // Parse markdown as user types
 		startAutoSave();
+	}
+
+	// Add a new note
+	async function addNote(categoryid: string | null) {
+		const newNote: Omit<Note, 'id' | 'created_at' | 'updated_at'> = {
+			userId: data.session.user.id,
+			fileName: 'New Note',
+			content: '',
+			categoryid: categoryid === 'uncategorized' ? null : categoryid,
+			deleted: false
+		};
+		const supabaseNote = await notes.createNote(newNote);
+
+		// Get back supabase note id
+		console.log('Supabase note: ', supabaseNote);
+		if (supabaseNote) {
+			selectedNote.set(supabaseNote);
+			toast.success('Note created');
+		} else {
+			toast.error('Error creating note');
+			return;
+		}
 	}
 
 	// Parse markdown text into HTML
@@ -146,9 +206,7 @@
 	}
 </script>
 
-<Page
-	title={categoryId ? ($categories.find((e) => e.id === categoryId)?.category ?? 'Notes') : 'Notes'}
->
+<Page title={categoryName}>
 	<div slot="filter-bar" class="flex items-center justify-between w-full">
 		<p class="text-sm text-primary/40">{notesList.length} notes</p>
 
@@ -165,12 +223,60 @@
 						<DropdownMenu.Group>
 							<DropdownMenu.Label>Category {categoryName}</DropdownMenu.Label>
 							<DropdownMenu.Separator />
-							<DropdownMenu.Item>Add new note to {categoryName}</DropdownMenu.Item>
-							<DropdownMenu.Item>Rename category</DropdownMenu.Item>
-							<DropdownMenu.Item>Delete category</DropdownMenu.Item>
+							<DropdownMenu.Item
+								on:click={() => {
+									addNote(categoryId);
+								}}>Add new note to {categoryName}</DropdownMenu.Item
+							>
+							{#if !(categoryId === 'uncategorized')}
+								<DropdownMenu.Item
+									on:click={() => {
+										categoryDialogOpen = true;
+									}}>Rename category</DropdownMenu.Item
+								>
+								<DropdownMenu.Item>Delete category</DropdownMenu.Item>
+							{/if}
 						</DropdownMenu.Group>
 					</DropdownMenu.Content>
 				</DropdownMenu.Root>
+
+				<!-- Add Category -->
+				<Dialog.Root bind:open={categoryDialogOpen}>
+					<Dialog.Content>
+						<Dialog.Header>
+							<Dialog.Title>Rename category</Dialog.Title>
+							<Dialog.Description>
+								Categories are useful for grouping notes around a common topic. They are private to
+								you.
+							</Dialog.Description>
+
+							<form
+								method="POST"
+								action="?/renamecategory"
+								class="flex flex-col w-full gap-2 pt-8"
+								use:enhance={() => {
+									return ({ result }) => {
+										handleCategoryRename(result);
+									};
+								}}
+							>
+								<Label for="category-name" class="text-sm font-medium">Category name</Label>
+								<input name="category-id" value={categoryId} hidden />
+								<Input
+									name="category-name"
+									id="category-name"
+									placeholder="Enter category name"
+									bind:value={newCategoryName}
+									required
+								/>
+
+								<div class="flex justify-end w-full pt-6">
+									<Button type="submit"><Check class="w-4 h-4 mr-4"></Check> Save</Button>
+								</div>
+							</form>
+						</Dialog.Header>
+					</Dialog.Content>
+				</Dialog.Root>
 			{/if}
 		</div>
 	</div>
@@ -190,7 +296,21 @@
 					}}
 				>
 					<p class="text-sm font-normal">{note.fileName}</p>
-					<p class="text-sm font-normal text-primary/40">{formatDate(note.updated_at)}</p>
+					<div class="flex w-full gap-2">
+						<p class="text-sm font-normal text-primary/40">{formatDate(note.updated_at)}</p>
+
+						{#if !categoryId}
+							{#if note.categoryid}
+								{#await categories.getCategory(note.categoryid)}
+									Loading...
+								{:then category}
+									<Badge class="rounded-sm" variant="secondary">
+										{category?.category || 'Uncategorized'}
+									</Badge>
+								{/await}
+							{/if}
+						{/if}
+					</div>
 				</button>
 			{/each}
 		</div>
