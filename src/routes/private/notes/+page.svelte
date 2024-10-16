@@ -23,12 +23,6 @@
 	$: loadNoteContent($selectedNote);
 
 	// Create a derived store for the selected category
-	$: selectedCategory = derived([selectedNote, categories], ([$selectedNote, $categories]) =>
-		$selectedNote?.categoryid
-			? $categories.find((c) => c.id === $selectedNote.categoryid)
-			: undefined
-	);
-
 	const unsubscribe = notes.subscribe((value) => {
 		notesList = value;
 	});
