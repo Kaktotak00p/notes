@@ -1,14 +1,9 @@
 <script lang="ts">
 	import AiButton from './notes/(components)/AiButton.svelte';
-	import { marked } from 'marked'; // Import the Markdown parser
-	import Input from '$lib/components/ui/input/input.svelte';
-	import Button from '$lib/components/ui/button/button.svelte';
-	import { Textarea } from '$lib/components/ui/textarea';
-	import { X, Check, Trash, GripVertical, Plus, Menu } from 'lucide-svelte';
+
 	import { toast } from 'svelte-sonner';
-	import { notes, type Note } from '$lib/stores/notes';
+	import { notes, type Note, selectedNote } from '$lib/stores/notes';
 	import { tasks, type TaskList, type Task } from '$lib/stores/tasksOld';
-	import { Checkbox } from '$lib/components/ui/checkbox';
 	import Sortable from 'sortablejs';
 	import { Sidebar } from './notes/(components)';
 	import { isMd } from '$lib/stores/screen';
@@ -35,12 +30,7 @@
 	let isQuerying = false;
 
 	// Ui state
-	let selectedNote: Note | null = null;
 	let selectedTaskList: TaskList | null = null;
-	let noteContent = '';
-	let parsedContent = '';
-	let isEditing = false;
-	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let newNoteName = '';
 	let newTaskName = '';
 	let selectedTab: 'notes' | 'tasks' | 'home' | 'trash' | string = 'notes';
@@ -84,15 +74,6 @@
 		});
 	}
 
-	// Reset viewed content
-	function resetViewedContent() {
-		selectedNote = null;
-		selectedTaskList = null;
-		noteContent = '';
-		parsedContent = '';
-		isEditing = false;
-	}
-
 	// Logout function
 	async function logout() {
 		console.log('logging out');
@@ -104,66 +85,9 @@
 	}
 
 	// Load the selected note content
-	async function loadNoteContent(note: Note) {
-		selectedNote = note;
-		noteContent = note.content;
-		parsedContent = parseMarkdown(note.content);
-		isEditing = false;
-		if (autoSaveTimer) clearTimeout(autoSaveTimer);
-		sidebarOpen = false;
-	}
-
-	// Load the selected note content
 	async function loadTaskList(taskList: TaskList) {
-		selectedNote = null;
 		selectedTaskList = taskList;
-		isEditing = false;
 		sidebarOpen = false;
-	}
-
-	// Parse markdown text into HTML
-	function parseMarkdown(content: string): string {
-		return marked(content) as string;
-	}
-
-	// Auto-save functionality to save the note 5 seconds after the user stops typing
-	function startAutoSave() {
-		if (autoSaveTimer) clearTimeout(autoSaveTimer);
-		autoSaveTimer = setTimeout(saveNote, 5000); // Save after 5 seconds of inactivity
-	}
-
-	// Save the currently selected note and switch back to preview mode
-	async function saveNote() {
-		if (!selectedNote) {
-			toast.error('No note selected');
-			return;
-		}
-
-		const updatedNote = {
-			...selectedNote,
-			fileName: selectedNote.fileName,
-			content: noteContent
-		};
-
-		// Save or update note in store
-		notes.updateNote(updatedNote);
-
-		parsedContent = parseMarkdown(noteContent); // Re-parse the content after saving
-		isEditing = false; // Switch back to viewing mode
-
-		toast.success('Note saved');
-	}
-
-	// Delete a note
-	async function deleteNote(fileName: string) {
-		if (!selectedNote) {
-			toast.error('No note selected');
-			return;
-		}
-
-		notes.moveToTrash(selectedNote.id);
-		resetViewedContent();
-		toast.success('Note deleted');
 	}
 
 	// Add a new note
@@ -180,23 +104,12 @@
 		// Get back supabase note id
 		const supabaseNote = notes.getLastCreatedNote();
 		if (supabaseNote) {
-			loadNoteContent(supabaseNote as Note);
+			selectedNote.set(supabaseNote);
+			toast.success('Note created');
 		} else {
 			toast.error('Error creating note');
 			return;
 		}
-	}
-
-	// Update the note content and apply the markdown parsing in real-time
-	function updateContent(event: any) {
-		noteContent = event.target.value;
-		parsedContent = parseMarkdown(noteContent); // Parse markdown as user types
-		startAutoSave();
-	}
-
-	// Switch to editing mode when the user interacts with the preview
-	function switchToEditing() {
-		isEditing = true;
 	}
 
 	// TODO Remove
@@ -218,7 +131,6 @@
 	// TODO Remove
 	function deleteTaskList(listName: string) {
 		tasks.deleteTaskList(listName);
-		resetViewedContent();
 		toast.success('Task list deleted');
 	}
 
@@ -298,8 +210,8 @@
 			});
 
 			// If the selected note's category was deleted, update it
-			if (selectedNote && selectedNote.categoryid === categoryId) {
-				selectedNote = { ...selectedNote, categoryid: null };
+			if ($selectedNote && $selectedNote.categoryid === categoryId) {
+				selectedNote.update((note) => ({ ...$selectedNote, categoryid: null }));
 			}
 
 			toast.success(`Category deleted successfully`);
@@ -316,7 +228,7 @@
 		const updatedNote = { ...note, categoryid: categoryId };
 		await notes.updateNote(updatedNote);
 		// Refresh the selected note
-		selectedNote = { ...note, categoryid: categoryId };
+		if ($selectedNote) selectedNote.update((note) => ({ ...$selectedNote, categoryid: null }));
 
 		// Get the category name for the toast message
 		const category = $categories.find((c) => c.id === categoryId);
@@ -331,10 +243,12 @@
 		availableCategories,
 		selectedText
 	}: {
-		note: Note;
+		note: Note | null;
 		availableCategories: Category[];
 		selectedText: string | null;
 	}) {
+		if (!note) return;
+
 		isQuerying = true;
 		try {
 			let systemPrompt = '';
@@ -368,7 +282,7 @@
 			if (selectedText && selectedText.trim().length > 0) {
 				// Handle task extraction
 				console.log(aiResponse);
-				console.log(Array.isArray(aiResponse));
+				console.log(Array.isArray(aiResponse.tasks) && aiResponse.tasks.length > 0);
 				if (Array.isArray(aiResponse.tasks) && aiResponse.tasks.length > 0) {
 					// Create a new task list or add to an existing one
 					const taskListName = note.fileName + ' Tasks';
@@ -448,7 +362,7 @@
 		let selectedText = getSelectedText();
 
 		queryAI({
-			note: selectedNote,
+			note: $selectedNote,
 			availableCategories: $categories,
 			selectedText
 		});
@@ -489,16 +403,14 @@
 			bind:selectedTab
 			bind:newNoteName
 			bind:newCategoryName
-			bind:selectedNote
 			bind:selectedTaskList
 			bind:sidebarOpen
+			email={data.session.user.email ?? 'No email connected'}
 			{addCategory}
 			{assignCategory}
 			{deleteCategory}
 			{addNote}
 			{addTask}
-			{loadNoteContent}
-			{deleteNote}
 			{loadTaskList}
 			{deleteTaskList}
 			{logout}

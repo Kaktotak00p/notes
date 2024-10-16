@@ -171,3 +171,7 @@ function createNotesStore() {
 
 console.log("Initializing notes store");
 export const notes = createNotesStore();
+
+
+// Create a writable store for the selected note
+export const selectedNote = writable<Note | null>(null);

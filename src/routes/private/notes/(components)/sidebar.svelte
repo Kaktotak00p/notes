@@ -21,23 +21,22 @@
 	import type { Note } from '$lib/stores/notes';
 	import { notes } from '$lib/stores/notes';
 	import { tasks } from '$lib/stores/tasksOld';
+	import { categories } from '$lib/stores/categories';
 	import { goto } from '$app/navigation';
+
+	export let email: string;
 	export let selectedTab: string;
 	export let newNoteName: string;
 	export let newCategoryName: string; // Ensure this is exported
-	export let selectedNote: Note | null;
 	export let selectedTaskList: TaskList | null;
 	export let sidebarOpen: boolean = false;
 	export let addNote: (categoryid: string | null) => void;
 	export let addTask: (content: string) => void;
-	export let loadNoteContent: (note: Note) => void;
-	export let deleteNote: (fileName: string) => void;
 	export let loadTaskList: (taskList: TaskList) => void;
 	export let deleteTaskList: (name: string) => void;
 	export let logout: () => void;
 
 	// New variables for categories
-	export let categories: string[] = [];
 	export let addCategory: () => void;
 	export let assignCategory: (note: Note | null, category: string) => void;
 	export let deleteCategory: (category: string) => void;
@@ -61,7 +60,10 @@
 	<div class="flex flex-col h-full overflow-hidden">
 		<!-- Header -->
 		<div class="flex flex-col items-start w-full gap-2 px-4 pt-4">
-			<h3 class="mb-4 text-4xl font-bold text-primary">NoteNest</h3>
+			<div class="flex flex-col gap-0 mb-4">
+				<h3 class="text-4xl font-bold text-primary">NoteNest</h3>
+				<p class="text-sm text-primary/40">{email}</p>
+			</div>
 
 			<!-- Search Input -->
 			<Input type="text" placeholder="Search" class="w-full rounded" />
@@ -128,12 +130,12 @@
 				</Collapsible.Trigger>
 				<Collapsible.Content>
 					<div class="flex flex-col gap-2 pl-6">
-						{#each categories as category}
+						{#each $categories as category}
 							<SidebarButton
 								icon={Tag}
-								text={category}
-								selected={selectedTab === category}
-								onClick={() => (selectedTab = category)}
+								text={category.category}
+								selected={selectedTab === category.id}
+								onClick={() => (selectedTab = category.id)}
 							/>
 						{/each}
 					</div>
