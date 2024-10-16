@@ -195,9 +195,7 @@
 								<!-- Delete button -->
 								<AlertDialog.Root>
 									<AlertDialog.Trigger>
-										<Button size="icon" variant="destructive"
-											><Trash class="w-4 h-4"></Trash></Button
-										>
+										<Button size="icon" variant="ghost"><Trash class="w-4 h-4"></Trash></Button>
 									</AlertDialog.Trigger>
 									<AlertDialog.Content>
 										<AlertDialog.Header>
@@ -225,7 +223,7 @@
 						</p>
 					</div>
 
-					<div class="flex flex-col gap-8 px-8 pt-4">
+					<div class="flex flex-col w-full h-full gap-8 px-8 pt-4">
 						<!-- Title -->
 						<input
 							on:keyup={saveNote}
@@ -249,7 +247,7 @@
 							/>
 						{:else}
 							<button class="flex w-full h-full text-left" on:click={switchToEditing}>
-								<div class="flex flex-col h-full prose-sm prose max-w-none">
+								<div class="flex flex-col w-full h-full prose-sm prose max-w-none">
 									<div
 										class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5"
 									>
