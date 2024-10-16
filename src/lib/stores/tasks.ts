@@ -80,7 +80,7 @@ function createTasksStore() {
     }
 
     // Function to create a new task
-    async function createTask(newTask: Omit<Task, 'id' | 'created_at' | 'updated_at'>): Promise<void> {
+    async function createTask(newTask: Omit<Task, 'id' | 'created_at' | 'updated_at'>): Promise<Task | null> {
         const { data, error } = await supabase
             .from('tasks')
             .insert(newTask)
@@ -88,14 +88,15 @@ function createTasksStore() {
 
         if (error) {
             console.error('Error creating task:', error);
+            return null;
         } else {
             // Add the newly created task to the store
-            update(currentTasks => [...currentTasks, ...(data || [])]);
+            return data ? data[0] : null;
         }
     }
 
     // Function to update a task in Supabase and the store
-    async function updateTask(updatedTask: Task): Promise<void> {
+    async function updateTask(updatedTask: Task): Promise<Task | null> {
         const { data, error } = await supabase
             .from('tasks')
             .update({
@@ -109,11 +110,10 @@ function createTasksStore() {
 
         if (error) {
             console.error('Error updating task:', error);
+            return null;
         } else {
             // Update the store after the database update
-            update(currentTasks => currentTasks.map(task =>
-                task.id === updatedTask.id ? (data ? data[0] : updatedTask) : task
-            ));
+            return data ? data[0] : null;
         }
     }
 
@@ -128,7 +128,7 @@ function createTasksStore() {
             console.error('Error deleting task permanently:', error);
         } else {
             // Remove the task from the store after deletion
-            update(currentTasks => currentTasks.filter(task => task.id !== taskId));
+            console.log("Task deleted")
         }
     }
 

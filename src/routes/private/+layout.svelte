@@ -390,12 +390,12 @@
 	}
 
 	// Auto-capture selected text in the note
-	$: if (selectedNote) {
+	$: if ($selectedNote) {
 		document.addEventListener('mouseup', captureSelectedText);
 	}
 </script>
 
-<div class="fixed flex flex-row w-screen h-screen gap-2 p-2 overflow-y-hidden bg-background">
+<div class="fixed flex flex-row w-screen h-screen p-2 overflow-y-hidden bg-background">
 	<!-- Greater Sidebar -->
 	<div class="flex flex-col h-full w-fit">
 		<!-- Persistent Sidebar -->

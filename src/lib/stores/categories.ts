@@ -75,7 +75,7 @@ function createCategoriesStore() {
     }
 
     // Function to create a new category
-    async function createCategory(newCategory: Omit<Category, 'id'>): Promise<void> {
+    async function createCategory(newCategory: Omit<Category, 'id'>): Promise<Category | null> {
         const { data, error } = await supabase
             .from('categories')
             .insert(newCategory)
@@ -83,14 +83,15 @@ function createCategoriesStore() {
 
         if (error) {
             console.error('Error creating category:', error);
+            return null;
         } else {
             // Add the newly created category to the store
-            update(currentCategories => [...currentCategories, ...(data || [])]);
+            return data ? data[0] : null;
         }
     }
 
     // Function to update a category in Supabase and the store
-    async function updateCategory(updatedCategory: Category): Promise<void> {
+    async function updateCategory(updatedCategory: Category): Promise<Category | null> {
         const { data, error } = await supabase
             .from('categories')
             .update({
@@ -101,11 +102,10 @@ function createCategoriesStore() {
 
         if (error) {
             console.error('Error updating category:', error);
+            return null;
         } else {
             // Update the store after the database update
-            update(currentCategories => currentCategories.map(category =>
-                category.id === updatedCategory.id ? (data ? data[0] : updatedCategory) : category
-            ));
+            return data ? data[0] : null;
         }
     }
 
@@ -120,7 +120,7 @@ function createCategoriesStore() {
             console.error('Error deleting category permanently:', error);
         } else {
             // Remove the category from the store after deletion
-            update(currentCategories => currentCategories.filter(category => category.id !== categoryId));
+            console.log("Deleted category")
         }
     }
 

@@ -81,7 +81,7 @@ function createNotesStore() {
     }
 
     // Function to create a new note
-    async function createNote(newNote: Omit<Note, 'id' | 'created_at' | 'updated_at'>): Promise<void> {
+    async function createNote(newNote: Omit<Note, 'id' | 'created_at' | 'updated_at'>): Promise<Note | null> {
         const { data, error } = await supabase
             .from('notes')
             .insert(newNote)
@@ -89,18 +89,18 @@ function createNotesStore() {
 
         if (error) {
             console.error('Error creating note:', error);
+            return null;
         } else {
-            // Add the newly created note to the store
-            update(currentNotes => [...currentNotes, ...(data || [])]);
+            return data ? data[0] : null;
         }
     }
 
     // Function to update a note in Supabase and the store
-    async function updateNote(updatedNote: Note): Promise<void> {
+    async function updateNote(updatedNote: Note): Promise<Note | null> {
         const { data, error } = await supabase
             .from('notes')
             .update({
-                filename: updatedNote.fileName,
+                fileName: updatedNote.fileName,
                 content: updatedNote.content,
                 categoryid: updatedNote.categoryid, // Update categoryid
                 deleted: updatedNote.deleted // Update deleted field
@@ -110,26 +110,27 @@ function createNotesStore() {
 
         if (error) {
             console.error('Error updating note:', error);
+            return null;
         } else {
-            // Update the store after the database update
-            update(currentNotes => currentNotes.map(note =>
-                note.id === updatedNote.id ? (data ? data[0] : updatedNote) : note
-            ));
+            console.log('Updated note: ', updatedNote);
+            return data ? data[0] : null;
         }
     }
 
     // Function to "move to trash" by setting "deleted" to true
-    async function moveToTrash(noteId: string): Promise<void> {
-        const { error } = await supabase
+    async function moveToTrash(noteId: string): Promise<Note | null> {
+        const { data, error } = await supabase
             .from('notes')
             .update({ deleted: true }) // Set the note as deleted
             .eq('id', noteId);
 
         if (error) {
             console.error('Error moving note to trash:', error);
+            return null;
         } else {
             // Remove the note from the store view (since we're not showing deleted notes)
-            update(currentNotes => currentNotes.filter(note => note.id !== noteId));
+            console.log('Moved note to trash');
+            return data ? data[0] : null;
         }
     }
 
@@ -144,7 +145,7 @@ function createNotesStore() {
             console.error('Error deleting note permanently:', error);
         } else {
             // Remove the note from the store after deletion
-            update(currentNotes => currentNotes.filter(note => note.id !== noteId));
+            console.log("Note deleted permanently")
         }
     }
 

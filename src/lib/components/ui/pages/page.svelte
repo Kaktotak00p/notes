@@ -19,7 +19,7 @@
 	</div>
 
 	<!-- Page Content -->
-	<div class="flex flex-col w-full h-full bg-white rounded-md">
+	<div class="flex flex-col w-full h-full bg-white border rounded-md">
 		<slot name="content" />
 	</div>
 </div>

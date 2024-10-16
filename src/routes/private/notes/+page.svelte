@@ -2,7 +2,9 @@
 	import { Page } from '$lib/components/ui/pages';
 	import { marked } from 'marked'; // Import the Markdown parser
 	import { notes, type Note, selectedNote } from '$lib/stores/notes';
+	import { categories } from '$lib/stores/categories';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import * as Select from '$lib/components/ui/select';
 	import { toast } from 'svelte-sonner';
 
 	let isEditing: boolean = true;
@@ -115,23 +117,63 @@
 	</div>
 
 	<!-- Note Content -->
-	<div slot="content" class="flex flex-col items-start justify-start h-full">
-		{#if isEditing}
-			<Textarea
-				class="w-full h-full border-none outline outline-muted-foreground/20 p-2.5 bg-muted text-black text-base resize-none focus-visible:outline-primary/20"
-				bind:value={noteContent}
-				on:input={updateContent}
-			/>
-		{:else}
-			<button class="w-full h-full text-left" on:click={switchToEditing}>
-				<div class="flex flex-col h-full prose-sm prose max-w-none">
-					<div
-						class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5"
+
+	<div slot="content" class="flex flex-col items-start justify-start h-full px-8 pt-8">
+		{#if $selectedNote}
+			<div class="flex flex-col w-full h-full">
+				<!-- Action bar -->
+				<div class="w-full">
+					<!-- Category picker -->
+					<Select.Root
+						onSelectedChange={(v) => {
+							if ($selectedNote && v) {
+								notes.updateNote({ ...$selectedNote, categoryid: v.value });
+							}
+						}}
+						selected={$selectedNote?.categoryid ? { value: $selectedNote.categoryid } : undefined}
 					>
-						{@html parsedContent}
+						<Select.Trigger class="w-[180px]">
+							<Select.Value placeholder="Category" />
+						</Select.Trigger>
+						<Select.Content>
+							{#each $categories as category}
+								<Select.Item value={category.id}>{category.category}</Select.Item>
+							{/each}
+						</Select.Content>
+					</Select.Root>
+
+					<div class="flex gap-2">
+						<!-- Save Button -->
+
+						<!-- Delete button -->
 					</div>
 				</div>
-			</button>
+
+				<!-- Title -->
+				<input
+					bind:value={fileName}
+					class="text-lg font-semibold bg-transparent border-none outline-none focus:ring-0"
+				/>
+
+				<!-- Text area -->
+				{#if isEditing}
+					<textarea
+						class="w-full h-full border-none outline outline-muted-foreground/20 p-2.5 bg-muted text-black text-base resize-none focus-visible:outline-primary/20"
+						bind:value={noteContent}
+						on:input={updateContent}
+					/>
+				{:else}
+					<button class="w-full h-full text-left" on:click={switchToEditing}>
+						<div class="flex flex-col h-full prose-sm prose max-w-none">
+							<div
+								class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5"
+							>
+								{@html parsedContent}
+							</div>
+						</div>
+					</button>
+				{/if}
+			</div>
 		{/if}
 	</div>
 </Page>
