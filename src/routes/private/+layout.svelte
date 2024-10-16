@@ -12,6 +12,7 @@
 	import { goto } from '$app/navigation';
 	import { categories, type Category } from '$lib/stores/categories';
 	import { tasks as newtasks } from '$lib/stores/tasks';
+	import { page } from '$app/stores';
 
 	export let data: {
 		session: Session;
@@ -33,8 +34,12 @@
 	let selectedTaskList: TaskList | null = null;
 	let newNoteName = '';
 	let newTaskName = '';
-	let selectedTab: 'notes' | 'tasks' | 'home' | 'trash' | string = 'notes';
 	let sidebarOpen = false;
+
+	$: selectedTab =
+		$page.url.searchParams.get('categoryid') ||
+		$page.url.pathname.replace('/private/', '') ||
+		'home';
 
 	// Categories state
 
@@ -409,9 +414,6 @@
 		<Sidebar
 			bind:selectedTab
 			email={data.session.user.email ?? 'No email connected'}
-			{addCategory}
-			{assignCategory}
-			{deleteCategory}
 			{addNote}
 			{addTask}
 			{logout}

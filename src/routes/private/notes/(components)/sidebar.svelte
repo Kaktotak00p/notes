@@ -20,14 +20,9 @@
 		CirclePlus
 	} from 'lucide-svelte';
 
-	import type { Note } from '$lib/stores/notes';
-	import { notes } from '$lib/stores/notes';
-	import { tasks } from '$lib/stores/tasksOld';
 	import { categories } from '$lib/stores/categories';
 	import { goto } from '$app/navigation';
-	import { Footer } from '$lib/components/ui/alert-dialog';
 	import { enhance } from '$app/forms';
-	import { invalidateAll } from '$app/navigation';
 
 	export let email: string;
 	export let selectedTab: string;
@@ -36,23 +31,7 @@
 	export let addTask: (content: string) => void;
 	export let logout: () => void;
 
-	// New variables for categories
-	export let addCategory: () => void;
-	export let assignCategory: (note: Note | null, category: string) => void;
-	export let deleteCategory: (category: string) => void;
-
 	let showCategories: boolean = false;
-
-	// TODO Function to get notes by category
-	// function getNotesByCategory(category: string) {
-	// 	return $notes.filter((note) => note.category === category);
-	// }
-
-	// TODO Function to get notes without a category
-	// function getUncategorizedNotes() {
-	// 	return $notes.filter((note) => !note.category || note.category === '');
-	// }
-
 	let newCategoryName = '';
 	let dialogOpen = false;
 
@@ -112,7 +91,6 @@
 				text="Home"
 				selected={selectedTab === 'home'}
 				onClick={() => {
-					selectedTab = 'home';
 					goto('/private');
 				}}
 			/>
@@ -122,7 +100,6 @@
 				text="Notes"
 				selected={selectedTab === 'notes'}
 				onClick={() => {
-					selectedTab = 'notes';
 					goto('/private/notes');
 				}}
 			/>
@@ -132,7 +109,6 @@
 				text="Tasks"
 				selected={selectedTab === 'tasks'}
 				onClick={() => {
-					selectedTab = 'tasks';
 					goto('/private/tasks');
 				}}
 			/>
@@ -209,7 +185,6 @@
 								text={category.category}
 								selected={selectedTab === category.id}
 								onClick={() => {
-									selectedTab = category.id;
 									goto(`/private/notes?categoryid=${category.id}`);
 								}}
 							/>
@@ -220,7 +195,6 @@
 							text="Uncategorized"
 							selected={selectedTab === 'uncategorized'}
 							onClick={() => {
-								selectedTab = 'uncategorized';
 								goto(`/private/notes?categoryid=uncategorized`);
 							}}
 						/>
@@ -233,7 +207,6 @@
 				text="Trash"
 				selected={selectedTab === 'trash'}
 				onClick={() => {
-					selectedTab = 'trash';
 					goto('/private/trash');
 				}}
 			/>

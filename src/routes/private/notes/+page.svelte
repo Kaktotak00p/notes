@@ -10,8 +10,9 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Select from '$lib/components/ui/select';
 	import { toast } from 'svelte-sonner';
-	import { Trash } from 'lucide-svelte';
+	import { Trash, Ellipsis } from 'lucide-svelte';
 	import { page } from '$app/stores';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 
 	let notesList: Note[] = [];
 	let isEditing: boolean = true;
@@ -23,6 +24,7 @@
 
 	// Get the categoryid from the URL
 	$: categoryId = $page.url.searchParams.get('categoryid');
+	$: categoryName = $categories.find((c) => c.id === categoryId)?.category ?? 'Uncategorized';
 
 	// Filter notes based on the selected category
 	$: filteredNotes = derived([notes, categories], ([$notes, $categories]) => {
@@ -147,8 +149,30 @@
 <Page
 	title={categoryId ? ($categories.find((e) => e.id === categoryId)?.category ?? 'Notes') : 'Notes'}
 >
-	<div slot="filter-bar" class="flex justify-between w-full">
+	<div slot="filter-bar" class="flex items-center justify-between w-full">
 		<p class="text-sm text-primary/40">{notesList.length} notes</p>
+
+		<!-- Action buttons -->
+		<div class="flex items-center gap-2">
+			{#if categoryId}
+				<DropdownMenu.Root>
+					<DropdownMenu.Trigger>
+						<Button variant="ghost" size="icon">
+							<Ellipsis class="w-4 h-4"></Ellipsis>
+						</Button>
+					</DropdownMenu.Trigger>
+					<DropdownMenu.Content>
+						<DropdownMenu.Group>
+							<DropdownMenu.Label>Category {categoryName}</DropdownMenu.Label>
+							<DropdownMenu.Separator />
+							<DropdownMenu.Item>Add new note to {categoryName}</DropdownMenu.Item>
+							<DropdownMenu.Item>Rename category</DropdownMenu.Item>
+							<DropdownMenu.Item>Delete category</DropdownMenu.Item>
+						</DropdownMenu.Group>
+					</DropdownMenu.Content>
+				</DropdownMenu.Root>
+			{/if}
+		</div>
 	</div>
 	<div slot="navigator" class="w-full">
 		<!-- Notes list -->
