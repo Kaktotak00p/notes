@@ -41,7 +41,7 @@ function createNotesStore(): NoteStore {
         const { data } = await supabase.auth.getUser();
         if (data && data.user) {
             await fetchNotes(data.user.id);  // Wait for notes to be fetched
-            subscribeToRealtimeNotes(data.user.id);
+            await subscribeToRealtimeNotes(data.user.id);
         } else {
             console.log("Initializing without user")
         }
@@ -66,12 +66,17 @@ function createNotesStore(): NoteStore {
     // Function to start real-time syncing
     function subscribeToRealtimeNotes(userId: string): void {
         console.log('Subscribing to real-time notes for user:', userId);
+        if (notesSubscription) {
+            console.log('Removing existing subscription');
+            supabase.removeChannel(notesSubscription);
+        }
         notesSubscription = supabase
             .channel('public:notes')
             .on(
                 'postgres_changes',
-                { event: '*', schema: 'public', table: 'notes' },
+                { event: '*', schema: 'public', table: 'notes', filter: `userId=eq.${userId}` },
                 payload => {
+                    console.log('Received real-time update for notes:', payload);
                     update(currentNotes => {
                         switch (payload.eventType) {
                             case 'INSERT':
@@ -91,7 +96,9 @@ function createNotesStore(): NoteStore {
                     });
                 }
             )
-            .subscribe();
+            .subscribe((status) => {
+                console.log('Subscription status:', status);
+            });
     }
 
     // Function to stop real-time syncing

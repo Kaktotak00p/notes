@@ -4,6 +4,9 @@
 	import Input from '$lib/components/ui/input/input.svelte';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { toast } from 'svelte-sonner';
+	import { notes } from '$lib/stores/notes';
+	import { categories } from '$lib/stores/categories';
+	import { tasks } from '$lib/stores/tasks';
 
 	let showSignup = false;
 	let error = '';
@@ -19,6 +22,9 @@
 			if (result.data?.success) {
 				toast.success(showSignup ? 'Signup successful!' : 'Login successful!');
 				goto('/private');
+
+				// Force a page reload
+				window.location.reload();
 			} else {
 				error = result.data?.error || 'An error occurred';
 				toast.error(error);

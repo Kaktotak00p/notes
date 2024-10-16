@@ -54,21 +54,11 @@
 		return $notes.filter((note) => note.categoryid === categoryId);
 	});
 
-	// Update notesList when filteredNotes changes
-	$: {
-		filteredNotes.subscribe((value) => {
-			notesList = value;
-		});
-	}
+	$: notesList = $filteredNotes;
 
 	$: loadNoteContent($selectedNote);
 
-	// Create a derived store for the selected category
-	const unsubscribe = notes.subscribe((value) => {
-		notesList = value;
-	});
-
-	onDestroy(unsubscribe);
+	$: console.log('Notes updated:', notesList);
 
 	// Category renaming
 	function handleCategoryRename(result: { type: string; data?: any }) {

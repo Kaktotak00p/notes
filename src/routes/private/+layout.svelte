@@ -8,7 +8,6 @@
 	import { Sidebar } from './notes/(components)';
 	import { isMd } from '$lib/stores/screen';
 	import { type Session, type SupabaseClient } from '@supabase/supabase-js';
-	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { categories, type Category } from '$lib/stores/categories';
 	import { tasks as newtasks } from '$lib/stores/tasks';
@@ -47,18 +46,6 @@
 
 	// Components
 	let sortableDiv: HTMLElement | null = null;
-
-	onMount(() => {
-		notes.initialize(data.supabase);
-		categories.initialize(data.supabase);
-		newtasks.initialize(data.supabase);
-	});
-
-	onDestroy(() => {
-		notes.unsubscribeFromRealtimeNotes();
-		categories.unsubscribeFromRealtimeCategories();
-		newtasks.unsubscribeFromRealtimeTasks();
-	});
 
 	$: if (sortableDiv && selectedTaskList) {
 		new Sortable(sortableDiv, {

@@ -1,15 +1,36 @@
 <script lang="ts">
 	import '../global.css';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { fade, fly } from 'svelte/transition';
 	import { browser } from '$app/environment';
 	import { invalidate } from '$app/navigation';
 	import { Toaster } from 'svelte-sonner';
+	import { notes } from '$lib/stores/notes';
+	import { categories } from '$lib/stores/categories';
+	import { tasks } from '$lib/stores/tasks';
 
 	export let data;
 	$: ({ session, supabase } = data);
 
 	let showFlashscreen = false;
+
+	onMount(async () => {
+		console.log('Initializing stores...');
+		if (data.session) {
+			await Promise.all([
+				notes.initialize(data.supabase),
+				categories.initialize(data.supabase)
+				// tasks.initialize(data.supabase)
+			]);
+			console.log('Stores initialized');
+		}
+	});
+
+	onDestroy(() => {
+		notes.unsubscribeFromRealtimeNotes();
+		categories.unsubscribeFromRealtimeCategories();
+		// newtasks.unsubscribeFromRealtimeTasks();
+	});
 
 	onMount(() => {
 		if (browser) {
