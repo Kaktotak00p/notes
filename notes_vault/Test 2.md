@@ -1,4 +1,0 @@
-# Note by testuser
-
-hola
-

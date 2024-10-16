@@ -37,7 +37,7 @@
 
 	$: selectedTab =
 		$page.url.searchParams.get('categoryid') ||
-		$page.url.pathname.replace('/private/', '') ||
+		($page.url.pathname === '/private' ? 'home' : $page.url.pathname.replace('/private/', '')) ||
 		'home';
 
 	// Categories state
@@ -107,6 +107,11 @@
 		} else {
 			toast.error('Error creating note');
 			return;
+		}
+
+		// Redirect to notes page if not already there
+		if (!window.location.pathname.includes('/private/notes')) {
+			goto('/private/notes');
 		}
 	}
 
