@@ -8,7 +8,7 @@
 	import { Sidebar } from './notes/(components)';
 	import { isMd } from '$lib/stores/screen';
 	import { type Session, type SupabaseClient } from '@supabase/supabase-js';
-	import { onMount } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { categories, type Category } from '$lib/stores/categories';
 	import { tasks as newtasks } from '$lib/stores/tasks';
@@ -47,6 +47,12 @@
 		notes.initialize(data.supabase);
 		categories.initialize(data.supabase);
 		newtasks.initialize(data.supabase);
+	});
+
+	onDestroy(() => {
+		notes.unsubscribeFromRealtimeNotes();
+		categories.unsubscribeFromRealtimeCategories();
+		newtasks.unsubscribeFromRealtimeTasks();
 	});
 
 	$: if (sortableDiv && selectedTaskList) {
@@ -103,6 +109,7 @@
 
 		// Get back supabase note id
 		const supabaseNote = notes.getLastCreatedNote();
+		console.log('Supabase note: ', supabaseNote);
 		if (supabaseNote) {
 			selectedNote.set(supabaseNote);
 			toast.success('Note created');

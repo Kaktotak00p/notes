@@ -14,7 +14,22 @@ export interface Note {
     deleted: boolean; // Matches the schema: soft deletion column
 }
 
-function createNotesStore() {
+export interface NoteStore {
+    subscribe: (run: (value: Note[]) => void) => () => void;
+    initialize: (supabaseClient: SupabaseClient) => Promise<void>;
+    fetchNotes: (userId: string) => Promise<void>;
+    createNote: (newNote: Omit<Note, 'id' | 'created_at' | 'updated_at'>) => Promise<Note | null>;
+    subscribeToRealtimeNotes: (userId: string) => void;
+    unsubscribeFromRealtimeNotes: () => void;
+    updateNote: (updatedNote: Note) => Promise<Note | null>;
+    moveToTrash: (noteId: string) => Promise<Note | null>;
+    deletePermanently: (noteId: string) => Promise<void>;
+    getLastCreatedNote: () => Note | undefined;
+    getNotesChronologicalOrder: () => Note[];
+    getNotesAntiChronologicalOrder: () => Note[];
+}
+
+function createNotesStore(): NoteStore {
     const { subscribe, set, update } = writable<Note[]>([]);
 
     let notesSubscription: RealtimeChannel | null = null;
@@ -82,6 +97,26 @@ function createNotesStore() {
             supabase.removeChannel(notesSubscription);
         }
     }
+
+
+    // Function to get notes in chronological order
+    function getNotesChronologicalOrder(): Note[] {
+        const notes = get({ subscribe });
+        return notes.sort((a, b) => {
+            // Sort by updated_at in descending order (most recent first)
+            return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+        });
+    }
+
+    // Function to get notes in anti-chronological order
+    function getNotesAntiChronologicalOrder(): Note[] {
+        const notes = get({ subscribe });
+        return notes.sort((a, b) => {
+            // Sort by updated_at in ascending order (oldest first)
+            return new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+        });
+    }
+
 
     // Function to create a new note
     async function createNote(newNote: Omit<Note, 'id' | 'created_at' | 'updated_at'>): Promise<Note | null> {
@@ -154,9 +189,17 @@ function createNotesStore() {
 
     // Function to get the last created note
     function getLastCreatedNote(): Note | undefined {
-        return get({ subscribe }).sort((a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        )[0];
+        const notes = get({ subscribe });
+        if (notes.length === 0) {
+            console.log("No notes found");
+            return undefined;
+        }
+
+        const lastNote = notes.reduce((latest, current) =>
+            new Date(current.created_at) > new Date(latest.created_at) ? current : latest
+        );
+        console.log("Last created note: ", lastNote);
+        return lastNote;
     }
 
     return {
@@ -169,7 +212,9 @@ function createNotesStore() {
         updateNote,
         moveToTrash,
         deletePermanently,
-        getLastCreatedNote // Add the new function to the returned object
+        getLastCreatedNote,
+        getNotesChronologicalOrder,
+        getNotesAntiChronologicalOrder
     };
 }
 

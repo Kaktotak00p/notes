@@ -1,5 +1,5 @@
 <script lang="ts">
-	export let title: string = 'Page';
+	export let title: string = 'Notes';
 </script>
 
 <div class="flex flex-row w-full h-full">

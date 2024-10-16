@@ -4,6 +4,9 @@
 	import Separator from '$lib/components/ui/separator/separator.svelte';
 	import SidebarButton from './sidebar-button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible';
+	import * as Dialog from '$lib/components/ui/dialog';
+	import { Label } from '$lib/components/ui/label';
+	import { toast } from 'svelte-sonner';
 	import {
 		Trash,
 		Menu,
@@ -13,7 +16,8 @@
 		ChevronRight,
 		Tag,
 		House,
-		Archive
+		Archive,
+		CirclePlus
 	} from 'lucide-svelte';
 
 	import type { Note } from '$lib/stores/notes';
@@ -21,6 +25,9 @@
 	import { tasks } from '$lib/stores/tasksOld';
 	import { categories } from '$lib/stores/categories';
 	import { goto } from '$app/navigation';
+	import { Footer } from '$lib/components/ui/alert-dialog';
+	import { enhance } from '$app/forms';
+	import { invalidateAll } from '$app/navigation';
 
 	export let email: string;
 	export let selectedTab: string;
@@ -45,6 +52,28 @@
 	// function getUncategorizedNotes() {
 	// 	return $notes.filter((note) => !note.category || note.category === '');
 	// }
+
+	let newCategoryName = '';
+	let dialogOpen = false;
+
+	function handleNewCategory(result: { type: string; data?: any }) {
+		console.log(result);
+		if (result.type === 'failure') {
+			console.error(result.data?.error);
+			toast.error(result.data?.error || 'An error occurred');
+		} else {
+			console.log('success');
+			if (result.data?.success) {
+				dialogOpen = false;
+				toast.success(`Category created!`);
+				// The store should update automatically due to realtime subscription
+				goto(`/private/notes?categoryid=${result.data.category.id}`);
+			} else {
+				let error = result.data?.error || 'An error occurred';
+				toast.error(error);
+			}
+		}
+	}
 </script>
 
 <div
@@ -110,7 +139,7 @@
 
 			<Collapsible.Root bind:open={showCategories}>
 				<Collapsible.Trigger class="w-full">
-					<Button size="sm" variant="ghost" class="w-full">
+					<Button size="sm" variant="ghost" class="flex justify-between w-full">
 						<div class="flex flex-row items-center w-full gap-4">
 							<ChevronRight
 								class="w-4 h-4 transition-transform duration-300 {showCategories
@@ -119,6 +148,57 @@
 							/>
 							<p class="font-normal">Categories</p>
 						</div>
+
+						<!-- Add Category -->
+						<Dialog.Root bind:open={dialogOpen}>
+							<Dialog.Trigger
+								><Button
+									class="z-50"
+									variant="ghost"
+									size="icon"
+									on:click={(event) => {
+										event.stopPropagation();
+										dialogOpen = true;
+										showCategories = true;
+									}}
+								>
+									<CirclePlus class="w-4 h-4"></CirclePlus>
+								</Button></Dialog.Trigger
+							>
+							<Dialog.Content>
+								<Dialog.Header>
+									<Dialog.Title>Create new category</Dialog.Title>
+									<Dialog.Description>
+										Categories are useful for grouping notes around a common topic. They are private
+										to you.
+									</Dialog.Description>
+
+									<form
+										method="POST"
+										action="?/newcategory"
+										class="flex flex-col w-full gap-2 pt-8"
+										use:enhance={() => {
+											return ({ result }) => {
+												handleNewCategory(result);
+											};
+										}}
+									>
+										<Label for="category-name" class="text-sm font-medium">Category name</Label>
+										<Input
+											name="category-name"
+											id="category-name"
+											placeholder="Enter category name"
+											bind:value={newCategoryName}
+											required
+										/>
+
+										<div class="justify-end w-full pt-6">
+											<Button type="submit">Save</Button>
+										</div>
+									</form>
+								</Dialog.Header>
+							</Dialog.Content>
+						</Dialog.Root>
 					</Button>
 				</Collapsible.Trigger>
 				<Collapsible.Content>
@@ -129,8 +209,8 @@
 								text={category.category}
 								selected={selectedTab === category.id}
 								onClick={() => {
-									selectedTab = category.category;
-									// goto('private/notes', )
+									selectedTab = category.id;
+									goto(`/private/notes?categoryid=${category.id}`);
 								}}
 							/>
 						{/each}
@@ -139,7 +219,10 @@
 							icon={Archive}
 							text="Uncategorized"
 							selected={selectedTab === 'uncategorized'}
-							onClick={() => (selectedTab = 'uncategorized')}
+							onClick={() => {
+								selectedTab = 'uncategorized';
+								goto(`/private/notes?categoryid=uncategorized`);
+							}}
 						/>
 					</div>
 				</Collapsible.Content>

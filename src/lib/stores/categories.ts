@@ -30,7 +30,7 @@ function createCategoriesStore() {
         const { data, error } = await supabase
             .from('categories')
             .select('*')
-            .eq('userid', userId);
+            .eq('userId', userId);
 
         if (error) {
             console.error('Error fetching categories:', error);

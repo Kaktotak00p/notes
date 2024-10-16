@@ -11,6 +11,7 @@
 	import * as Select from '$lib/components/ui/select';
 	import { toast } from 'svelte-sonner';
 	import { Trash } from 'lucide-svelte';
+	import { page } from '$app/stores';
 
 	let notesList: Note[] = [];
 	let isEditing: boolean = true;
@@ -19,6 +20,25 @@
 	let fileName = '';
 	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let textareaRef: any;
+
+	// Get the categoryid from the URL
+	$: categoryId = $page.url.searchParams.get('categoryid');
+
+	// Filter notes based on the selected category
+	$: filteredNotes = derived([notes, categories], ([$notes, $categories]) => {
+		if (!categoryId) return $notes;
+		if (categoryId === 'uncategorized') {
+			return $notes.filter((note) => !note.categoryid);
+		}
+		return $notes.filter((note) => note.categoryid === categoryId);
+	});
+
+	// Update notesList when filteredNotes changes
+	$: {
+		filteredNotes.subscribe((value) => {
+			notesList = value;
+		});
+	}
 
 	$: loadNoteContent($selectedNote);
 
@@ -124,9 +144,11 @@
 	}
 </script>
 
-<Page title="Notes">
-	<div slot="filter-bar">
-		<p class="text-sm text-primary/40">{$notes.length} notes</p>
+<Page
+	title={categoryId ? ($categories.find((e) => e.id === categoryId)?.category ?? 'Notes') : 'Notes'}
+>
+	<div slot="filter-bar" class="flex justify-between w-full">
+		<p class="text-sm text-primary/40">{notesList.length} notes</p>
 	</div>
 	<div slot="navigator" class="w-full">
 		<!-- Notes list -->
