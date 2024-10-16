@@ -19,6 +19,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import type { Session, SupabaseClient } from '@supabase/supabase-js';
 	import { enhance } from '$app/forms';
+	import { goto } from '$app/navigation';
 
 	export let data: {
 		session: Session;
@@ -33,6 +34,7 @@
 	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let textareaRef: any;
 	let categoryDialogOpen: boolean = false;
+	let categoryDeleteDialogOpen: boolean = false;
 	let newCategoryName: string = '';
 
 	// Get the categoryid from the URL
@@ -146,6 +148,22 @@
 		}
 	}
 
+	async function deleteCategory(id: string) {
+		if (!categoryId || categoryId === 'uncategorized') return;
+		// Delete the category
+		await categories.deleteCategoryPermanently(id);
+
+		// Remove the categoryid from any notes that have it
+		for (let note of $notes) {
+			if (note.categoryid === id) {
+				await notes.updateNote({ ...note, categoryid: null });
+			}
+		}
+
+		goto('/private/notes');
+		toast.success('Category deleted');
+	}
+
 	// Auto-save functionality to save the note 5 seconds after the user stops typing
 	function startAutoSave() {
 		if (autoSaveTimer) clearTimeout(autoSaveTimer);
@@ -224,7 +242,11 @@
 										categoryDialogOpen = true;
 									}}>Rename category</DropdownMenu.Item
 								>
-								<DropdownMenu.Item>Delete category</DropdownMenu.Item>
+								<DropdownMenu.Item
+									on:click={() => {
+										categoryDeleteDialogOpen = true;
+									}}>Delete category</DropdownMenu.Item
+								>
 							{/if}
 						</DropdownMenu.Group>
 					</DropdownMenu.Content>
@@ -267,6 +289,26 @@
 						</Dialog.Header>
 					</Dialog.Content>
 				</Dialog.Root>
+
+				<!-- Delete category -->
+
+				<AlertDialog.Root bind:open={categoryDeleteDialogOpen}>
+					<AlertDialog.Content>
+						<AlertDialog.Header>
+							<AlertDialog.Title>Are you absolutely sure?</AlertDialog.Title>
+							<AlertDialog.Description>
+								This action cannot be undone. This will permanently delete this category. All notes
+								under this category will NOT be deleted, but they will be moved to "Uncategorized".
+							</AlertDialog.Description>
+						</AlertDialog.Header>
+						<AlertDialog.Footer>
+							<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+							<AlertDialog.Action on:click={() => deleteCategory(categoryId)}
+								>Continue</AlertDialog.Action
+							>
+						</AlertDialog.Footer>
+					</AlertDialog.Content>
+				</AlertDialog.Root>
 			{/if}
 		</div>
 	</div>
@@ -320,14 +362,17 @@
 								<Select.Root
 									onSelectedChange={(v) => {
 										if ($selectedNote && v && typeof v.value === 'string') {
-											const updated = { ...$selectedNote, categoryid: v.value };
+											const updated = {
+												...$selectedNote,
+												categoryid: v.value !== 'uncategorized' ? v.value : null
+											};
 											notes.updateNote(updated);
 											selectedNote.set(updated);
 										}
 									}}
 									selected={$selectedNote.categoryid
 										? { value: $selectedNote.categoryid }
-										: undefined}
+										: { value: 'uncategorized' }}
 								>
 									<Select.Trigger class="w-[180px]">
 										{$categories.find((e) => e.id === $selectedNote?.categoryid)?.category ??
@@ -337,6 +382,8 @@
 										{#each $categories as category}
 											<Select.Item value={category.id}>{category.category}</Select.Item>
 										{/each}
+
+										<Select.Item value="uncategorized">Uncategorized</Select.Item>
 									</Select.Content>
 								</Select.Root>
 							{/key}
