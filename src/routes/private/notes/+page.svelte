@@ -1,19 +1,39 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
+	import { derived } from 'svelte/store';
 	import { Page } from '$lib/components/ui/pages';
 	import { marked } from 'marked'; // Import the Markdown parser
 	import { notes, type Note, selectedNote } from '$lib/stores/notes';
 	import { categories } from '$lib/stores/categories';
 	import { Textarea } from '$lib/components/ui/textarea';
+	import { Button } from '$lib/components/ui/button';
+	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Select from '$lib/components/ui/select';
 	import { toast } from 'svelte-sonner';
+	import { Trash } from 'lucide-svelte';
 
+	let notesList: Note[] = [];
 	let isEditing: boolean = true;
 	let noteContent = '';
 	let parsedContent = '';
 	let fileName = '';
 	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
+	let textareaRef: any;
 
 	$: loadNoteContent($selectedNote);
+
+	// Create a derived store for the selected category
+	$: selectedCategory = derived([selectedNote, categories], ([$selectedNote, $categories]) =>
+		$selectedNote?.categoryid
+			? $categories.find((c) => c.id === $selectedNote.categoryid)
+			: undefined
+	);
+
+	const unsubscribe = notes.subscribe((value) => {
+		notesList = value;
+	});
+
+	onDestroy(unsubscribe);
 
 	// Update the note content and apply the markdown parsing in real-time
 	function updateContent(event: any) {
@@ -30,6 +50,11 @@
 	// Switch to editing mode when the user interacts with the preview
 	function switchToEditing() {
 		isEditing = true;
+
+		// After switching to editing mode, focus on the textarea
+		setTimeout(() => {
+			textareaRef?.focus();
+		}, 0);
 	}
 
 	// Reset viewed content
@@ -68,6 +93,13 @@
 			return;
 		}
 
+		// Check if there are changes before saving
+		if ($selectedNote.content === noteContent && $selectedNote.fileName === fileName) {
+			console.log('No changes detected, skipping save');
+			loadNoteContent($selectedNote);
+			return;
+		}
+
 		// Extract note data from the store
 		const noteData = $selectedNote;
 		noteData.content = noteContent;
@@ -77,17 +109,17 @@
 		notes.updateNote(noteData);
 
 		loadNoteContent(noteData);
-		toast.success('Note saved');
+		// toast.success('Note saved');
 	}
 
 	// Delete a note
-	async function deleteNote(fileName: string) {
+	async function deleteNote(id: string) {
 		if (!$selectedNote) {
 			toast.error('No note selected');
 			return;
 		}
 
-		notes.moveToTrash($selectedNote.id);
+		notes.moveToTrash(id);
 		resetViewedContent();
 		toast.success('Note deleted');
 	}
@@ -105,12 +137,20 @@
 	<div slot="navigator" class="w-full">
 		<!-- Notes list -->
 		<div class="flex flex-col w-full h-full gap-2 overflow-y-scroll">
-			{#each $notes as note}
+			{#each notesList as note (note.id)}
 				<button
-					class="flex flex-col w-full px-6 py-8 bg-white border rounded-md h-28 hover:bg-gray-100"
+					class="flex flex-col w-full px-6 py-8 border rounded-md h-28 hover:bg-gray-100/80 {$selectedNote &&
+					note.id === $selectedNote.id
+						? 'bg-gray-100'
+						: 'bg-white'}"
+					on:click={() => {
+						// Set selected
+						console.log('Set selected: ', note.id);
+						selectedNote.set(note);
+					}}
 				>
 					<p class="text-sm font-normal">{note.fileName}</p>
-					<p class="text-sm font-normal text-primary/40">{formatDate(note.created_at)}</p>
+					<p class="text-sm font-normal text-primary/40">{formatDate(note.updated_at)}</p>
 				</button>
 			{/each}
 		</div>
@@ -118,62 +158,109 @@
 
 	<!-- Note Content -->
 
-	<div slot="content" class="flex flex-col items-start justify-start h-full px-8 pt-8">
-		{#if $selectedNote}
-			<div class="flex flex-col w-full h-full">
-				<!-- Action bar -->
-				<div class="w-full">
-					<!-- Category picker -->
-					<Select.Root
-						onSelectedChange={(v) => {
-							if ($selectedNote && v) {
-								notes.updateNote({ ...$selectedNote, categoryid: v.value });
-							}
-						}}
-						selected={$selectedNote?.categoryid ? { value: $selectedNote.categoryid } : undefined}
-					>
-						<Select.Trigger class="w-[180px]">
-							<Select.Value placeholder="Category" />
-						</Select.Trigger>
-						<Select.Content>
-							{#each $categories as category}
-								<Select.Item value={category.id}>{category.category}</Select.Item>
-							{/each}
-						</Select.Content>
-					</Select.Root>
+	<div slot="content" class="flex flex-col items-start justify-start h-full px-4 pt-4">
+		{#key $selectedNote}
+			{#if $selectedNote}
+				<div class="flex flex-col w-full h-full gap-8">
+					<!-- Action bar -->
+					<div class="flex flex-col gap-2">
+						<div class="flex justify-between w-full">
+							<!-- Category picker -->
+							{#key $selectedNote.categoryid}
+								<Select.Root
+									onSelectedChange={(v) => {
+										if ($selectedNote && v && typeof v.value === 'string') {
+											const updated = { ...$selectedNote, categoryid: v.value };
+											notes.updateNote(updated);
+											selectedNote.set(updated);
+										}
+									}}
+									selected={$selectedNote.categoryid
+										? { value: $selectedNote.categoryid }
+										: undefined}
+								>
+									<Select.Trigger class="w-[180px]">
+										{$categories.find((e) => e.id === $selectedNote?.categoryid)?.category ??
+											'Choose a category'}
+									</Select.Trigger>
+									<Select.Content>
+										{#each $categories as category}
+											<Select.Item value={category.id}>{category.category}</Select.Item>
+										{/each}
+									</Select.Content>
+								</Select.Root>
+							{/key}
 
-					<div class="flex gap-2">
-						<!-- Save Button -->
-
-						<!-- Delete button -->
-					</div>
-				</div>
-
-				<!-- Title -->
-				<input
-					bind:value={fileName}
-					class="text-lg font-semibold bg-transparent border-none outline-none focus:ring-0"
-				/>
-
-				<!-- Text area -->
-				{#if isEditing}
-					<textarea
-						class="w-full h-full border-none outline outline-muted-foreground/20 p-2.5 bg-muted text-black text-base resize-none focus-visible:outline-primary/20"
-						bind:value={noteContent}
-						on:input={updateContent}
-					/>
-				{:else}
-					<button class="w-full h-full text-left" on:click={switchToEditing}>
-						<div class="flex flex-col h-full prose-sm prose max-w-none">
-							<div
-								class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5"
-							>
-								{@html parsedContent}
+							<div class="flex gap-2">
+								<!-- Delete button -->
+								<AlertDialog.Root>
+									<AlertDialog.Trigger>
+										<Button size="icon" variant="destructive"
+											><Trash class="w-4 h-4"></Trash></Button
+										>
+									</AlertDialog.Trigger>
+									<AlertDialog.Content>
+										<AlertDialog.Header>
+											<AlertDialog.Title>Are you absolutely sure?</AlertDialog.Title>
+											<AlertDialog.Description>
+												This will move the note into the trash. You can always restore the note from
+												the trash, or you can delete it permantely.
+											</AlertDialog.Description>
+										</AlertDialog.Header>
+										<AlertDialog.Footer>
+											<AlertDialog.Cancel>Cancel</AlertDialog.Cancel>
+											<AlertDialog.Action
+												on:click={() => {
+													// Delete note
+													if ($selectedNote) deleteNote($selectedNote.id);
+												}}>Continue</AlertDialog.Action
+											>
+										</AlertDialog.Footer>
+									</AlertDialog.Content>
+								</AlertDialog.Root>
 							</div>
 						</div>
-					</button>
-				{/if}
-			</div>
-		{/if}
+						<p class="text-sm text-primary/40">
+							Last edited on {formatDate($selectedNote.updated_at)}
+						</p>
+					</div>
+
+					<div class="flex flex-col gap-8 px-8 pt-4">
+						<!-- Title -->
+						<input
+							on:keyup={saveNote}
+							on:abort={saveNote}
+							on:focusout={saveNote}
+							bind:value={fileName}
+							class="text-2xl font-semibold bg-transparent border-none outline-none focus:ring-0"
+						/>
+
+						<!-- Text area -->
+						{#if isEditing}
+							<textarea
+								bind:this={textareaRef}
+								class="w-full h-full p-2.5 text-base resize-none bg-transparent border-none outline-none focus:ring-0 focus-visible:outline-none"
+								bind:value={noteContent}
+								on:input={updateContent}
+								on:blur={() => {
+									isEditing = false;
+									saveNote();
+								}}
+							/>
+						{:else}
+							<button class="flex w-full h-full text-left" on:click={switchToEditing}>
+								<div class="flex flex-col h-full prose-sm prose max-w-none">
+									<div
+										class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5"
+									>
+										{@html parsedContent}
+									</div>
+								</div>
+							</button>
+						{/if}
+					</div>
+				</div>
+			{/if}
+		{/key}
 	</div>
 </Page>

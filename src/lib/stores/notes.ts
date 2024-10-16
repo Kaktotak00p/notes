@@ -59,6 +59,9 @@ function createNotesStore() {
                             case 'INSERT':
                                 return [...currentNotes, payload.new as Note];
                             case 'UPDATE':
+                                if ((payload.new as Note).deleted) {
+                                    return currentNotes.filter(note => note.id !== (payload.new as Note).id);
+                                }
                                 return currentNotes.map(note =>
                                     note.id === (payload.new as Note).id ? (payload.new as Note) : note
                                 );
