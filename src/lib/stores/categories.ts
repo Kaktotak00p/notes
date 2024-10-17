@@ -9,7 +9,7 @@ export interface Category {
     category: string;
 }
 
-function createCategoriesStore() {
+export function createCategoriesStore() {
     const { subscribe, set, update } = writable<Category[]>([]);
 
     let categoriesSubscription: RealtimeChannel | null = null;
@@ -157,6 +157,3 @@ function createCategoriesStore() {
         deleteCategoryPermanently,
     };
 }
-
-console.log("Initializing categories store");
-export const categories = createCategoriesStore();

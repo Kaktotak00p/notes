@@ -14,7 +14,7 @@ export interface Task {
     completed: boolean;
 }
 
-function createTasksStore() {
+export function createTasksStore() {
     const { subscribe, set, update } = writable<Task[]>([]);
 
     let tasksSubscription: RealtimeChannel | null = null;
@@ -35,7 +35,7 @@ function createTasksStore() {
         const { data, error } = await supabase
             .from('tasks')
             .select('*')
-            .eq('userid', userId);
+            .eq('userId', userId);
 
         if (error) {
             console.error('Error fetching tasks:', error);
@@ -151,6 +151,3 @@ function createTasksStore() {
         getLastCreatedTask // Add the new function to the returned object
     };
 }
-
-console.log("Initializing tasks store");
-export const tasks = createTasksStore();

@@ -21,7 +21,7 @@
 		Check
 	} from 'lucide-svelte';
 
-	import { categories } from '$lib/stores/categories';
+	import { categories } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
 

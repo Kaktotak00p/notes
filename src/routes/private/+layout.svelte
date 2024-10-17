@@ -2,15 +2,16 @@
 	import AiButton from './notes/(components)/AiButton.svelte';
 
 	import { toast } from 'svelte-sonner';
-	import { notes, type Note, selectedNote } from '$lib/stores/notes';
-	import { tasks, type TaskList, type Task } from '$lib/stores/tasksOld';
+	import { type Note, selectedNote } from '$lib/stores/notes';
+	import { notes } from '$lib/stores';
+	import { tasks as tasksNew } from '$lib/stores';
+	import { categories } from '$lib/stores';
 	import Sortable from 'sortablejs';
 	import { Sidebar } from './notes/(components)';
-	import { isMd } from '$lib/stores/screen';
 	import { type Session, type SupabaseClient } from '@supabase/supabase-js';
 	import { goto } from '$app/navigation';
-	import { categories, type Category } from '$lib/stores/categories';
-	import { tasks as newtasks } from '$lib/stores/tasks';
+	import { type Category } from '$lib/stores/categories';
+	import { tasks as tasks, type TaskList, type Task } from '$lib/stores/tasksOld';
 	import { page } from '$app/stores';
 
 	export let data: {

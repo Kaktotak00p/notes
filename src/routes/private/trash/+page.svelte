@@ -2,7 +2,7 @@
 	import Page from '$lib/components/ui/pages/page.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { onMount } from 'svelte';
-	import { notes } from '$lib/stores/notes';
+	import { notes } from '$lib/stores';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import Button from '$lib/components/ui/button/button.svelte';
@@ -12,7 +12,9 @@
 	import { Ellipsis, Trash } from 'lucide-svelte';
 	import { marked } from 'marked';
 	import { onDestroy } from 'svelte';
-	import { categories } from '$lib/stores/categories';
+	import { categories } from '$lib/stores';
+	import { toast } from 'svelte-sonner';
+	import { RotateCcw } from 'lucide-svelte';
 
 	export let data;
 
@@ -47,10 +49,18 @@
 	}
 
 	async function restoreAllNotes() {
+		// Return if there are no notes
+		if (deletedNotes.length === 0) {
+			toast.error('No notes to restore');
+			restoreDialogOpen = false;
+			return;
+		}
+
 		try {
 			await notes.restoreAllNotes();
 			deletedNotes = [];
 			restoreDialogOpen = false;
+			selected = null;
 		} catch (error) {
 			console.error('Error restoring all notes:', error);
 			// You might want to add some error handling or user feedback here
@@ -58,20 +68,33 @@
 	}
 
 	async function emptyTrash() {
+		// Return if there are no notes
+		if (deletedNotes.length === 0) {
+			toast.error('No notes to delete');
+			deleteDialogOpen = false;
+			return;
+		}
+
 		try {
 			await notes.emptyTrash();
 			deletedNotes = [];
 			deleteDialogOpen = false;
+			selected = null;
 		} catch (error) {
 			console.error('Error emptying trash:', error);
 			// You might want to add some error handling or user feedback here
 		}
 	}
 
-	async function restoreNote(noteId: string) {
+	async function restoreNote(noteId: string | undefined) {
+		if (!noteId) {
+			return;
+		}
+
 		try {
 			await notes.restoreNote(noteId);
 			deletedNotes = deletedNotes.filter((note) => note.id !== noteId);
+			selected = null;
 		} catch (error) {
 			console.error('Error restoring note:', error);
 		}
@@ -81,6 +104,7 @@
 		try {
 			await notes.deletePermanently(noteId);
 			deletedNotes = deletedNotes.filter((note) => note.id !== noteId);
+			selected = null;
 		} catch (error) {
 			console.error('Error deleting note:', error);
 		}
@@ -204,6 +228,11 @@
 						{/key}
 
 						<div class="flex gap-2">
+							<!-- Restore button -->
+							<Button variant="outline" on:click={() => restoreNote(selected?.id)}>
+								<RotateCcw class="w-4 h-4 mr-4" /> Restore
+							</Button>
+
 							<!-- Delete button -->
 							<AlertDialog.Root>
 								<AlertDialog.Trigger>

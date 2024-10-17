@@ -33,7 +33,7 @@ export interface NoteStore {
     getNotesAntiChronologicalOrder: () => Note[];
 }
 
-function createNotesStore(): NoteStore {
+export function createNotesStore(): NoteStore {
     const { subscribe, set, update } = writable<Note[]>([]);
 
     let notesSubscription: RealtimeChannel | null = null;
@@ -57,7 +57,7 @@ function createNotesStore(): NoteStore {
             .from('notes')
             .select('*')
             .eq('userId', userId)
-            .eq('deleted', false); // Only fetch non-deleted notes
+            .order('updated_at', { ascending: false });
 
         if (error) {
             console.error('Error fetching notes:', error);
@@ -85,9 +85,6 @@ function createNotesStore(): NoteStore {
                             case 'INSERT':
                                 return [...currentNotes, payload.new as Note];
                             case 'UPDATE':
-                                if ((payload.new as Note).deleted) {
-                                    return currentNotes.filter(note => note.id !== (payload.new as Note).id);
-                                }
                                 return currentNotes.map(note =>
                                     note.id === (payload.new as Note).id ? (payload.new as Note) : note
                                 );
@@ -229,8 +226,9 @@ function createNotesStore(): NoteStore {
         } else {
             const restoredCount = data ? data.length : 0;
             console.log(`Restored ${restoredCount} notes`);
-            return restoredCount;
         }
+
+        return data ? data.length : 0;
     }
 
     // Function to empty the trash
@@ -266,24 +264,7 @@ function createNotesStore(): NoteStore {
 
     // Function to retrieve all deleted notes
     async function getDeletedNotes(): Promise<Note[]> {
-        if (!supabase) {
-            console.error('Supabase client not initialized');
-            return [];
-        }
-
-        const { data, error } = await supabase
-            .from('notes')
-            .select('*')
-            .eq('deleted', true)
-            .order('updated_at', { ascending: false });
-
-        if (error) {
-            console.error('Error fetching deleted notes:', error);
-            return [];
-        } else {
-            console.log('Fetched deleted notes:', data);
-            return data || [];
-        }
+        return get({ subscribe }).filter(note => note.deleted);
     }
 
     return {
@@ -306,10 +287,7 @@ function createNotesStore(): NoteStore {
     };
 }
 
-console.log("Initializing notes store");
-export const notes = createNotesStore();
-
-
 // Create a writable store for the selected note
 export const selectedNote = writable<Note | null>(null);
+
 

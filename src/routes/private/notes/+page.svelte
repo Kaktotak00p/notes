@@ -3,8 +3,9 @@
 	import { derived } from 'svelte/store';
 	import { Page } from '$lib/components/ui/pages';
 	import { marked } from 'marked'; // Import the Markdown parser
-	import { notes, type Note, selectedNote } from '$lib/stores/notes';
-	import { categories } from '$lib/stores/categories';
+	import { notes } from '$lib/stores';
+	import { type Note, selectedNote } from '$lib/stores/notes';
+	import { categories } from '$lib/stores';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -21,7 +22,6 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
-	import { tasks } from '$lib/stores/tasks';
 
 	export let data: {
 		session: Session;
@@ -51,11 +51,12 @@
 
 	// Filter notes based on the selected category
 	$: filteredNotes = derived([notes, categories], ([$notes, $categories]) => {
-		if (!categoryId) return $notes;
+		let filtered = $notes.filter((note) => !note.deleted);
+		if (!categoryId) return filtered;
 		if (categoryId === 'uncategorized') {
-			return $notes.filter((note) => !note.categoryid);
+			return filtered.filter((note) => !note.categoryid);
 		}
-		return $notes.filter((note) => note.categoryid === categoryId);
+		return filtered.filter((note) => note.categoryid === categoryId);
 	});
 
 	$: notesList = $filteredNotes;

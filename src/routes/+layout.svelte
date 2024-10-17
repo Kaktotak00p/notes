@@ -5,9 +5,10 @@
 	import { browser } from '$app/environment';
 	import { invalidate } from '$app/navigation';
 	import { Toaster } from 'svelte-sonner';
-	import { notes } from '$lib/stores/notes';
-	import { categories } from '$lib/stores/categories';
-	import { tasks } from '$lib/stores/tasks';
+	import { notes } from '$lib/stores';
+	import { categories } from '$lib/stores';
+	import { tasks } from '$lib/stores';
+	import { initializeStores } from '$lib/stores';
 
 	export let data;
 	$: ({ session, supabase } = data);
@@ -15,14 +16,11 @@
 	let showFlashscreen = false;
 
 	onMount(async () => {
-		console.log('Initializing stores...');
-		if (data.session) {
-			await Promise.all([
-				notes.initialize(data.supabase),
-				categories.initialize(data.supabase)
-				// tasks.initialize(data.supabase)
-			]);
-			console.log('Stores initialized');
+		const {
+			data: { user }
+		} = await supabase.auth.getUser();
+		if (user) {
+			await initializeStores(user.id, supabase);
 		}
 	});
 
