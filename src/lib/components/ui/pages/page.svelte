@@ -1,5 +1,6 @@
 <script lang="ts">
 	export let title: string = 'Notes';
+	export let showPage = true;
 </script>
 
 <div class="flex flex-row w-full h-full">
@@ -18,8 +19,10 @@
 		</div>
 	</div>
 
-	<!-- Page Content -->
-	<div class="flex flex-col w-full h-full bg-white border rounded-md">
-		<slot name="content" />
-	</div>
+	{#if showPage}
+		<!-- Page Content -->
+		<div class="flex flex-col w-full h-full bg-white border rounded-md">
+			<slot name="content" />
+		</div>
+	{/if}
 </div>

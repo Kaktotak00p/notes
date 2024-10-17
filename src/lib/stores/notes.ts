@@ -25,6 +25,9 @@ export interface NoteStore {
     updateNote: (updatedNote: Note) => Promise<Note | null>;
     moveToTrash: (noteId: string) => Promise<Note | null>;
     deletePermanently: (noteId: string) => Promise<void>;
+    restoreNote: (noteId: string) => Promise<Note | null>;
+    restoreAllNotes: () => Promise<number>;
+    emptyTrash: () => Promise<void>;
     getLastCreatedNote: () => Note | undefined;
     getNotesChronologicalOrder: () => Note[];
     getNotesAntiChronologicalOrder: () => Note[];
@@ -212,8 +215,62 @@ function createNotesStore(): NoteStore {
         return lastNote;
     }
 
+    // Function to restore all notes
+    async function restoreAllNotes(): Promise<number> {
+        const { data, error } = await supabase
+            .from('notes')
+            .update({ deleted: false })
+            .eq('deleted', true)
+            .select('id');  // We only need to select the id to count the number of affected rows
+
+        if (error) {
+            console.error('Error restoring all notes:', error);
+            return 0;
+        } else {
+            const restoredCount = data ? data.length : 0;
+            console.log(`Restored ${restoredCount} notes`);
+            return restoredCount;
+        }
+    }
+
+    // Function to empty the trash
+    async function emptyTrash(): Promise<void> {
+        const { data, error } = await supabase
+            .from('notes')
+            .delete()
+            .eq('deleted', true);
+
+        if (error) {
+            console.error('Error emptying trash:', error);
+        } else {
+            console.log('Emptied trash:', data);
+        }
+    }
+
+    // Function to restore a note
+    async function restoreNote(noteId: string): Promise<Note | null> {
+        const { data, error } = await supabase
+            .from('notes')
+            .update({ deleted: false })
+            .eq('id', noteId)
+            .select('*');
+
+        if (error) {
+            console.error('Error restoring note:', error);
+            return null;
+        } else {
+            console.log('Restored note:', data);
+            return data ? data[0] : null;
+        }
+    }
+
     // Function to retrieve all deleted notes
     async function getDeletedNotes(): Promise<Note[]> {
+        if (!supabase) {
+            console.error('Supabase client not initialized');
+            return [];
+        }
+
         const { data, error } = await supabase
             .from('notes')
             .select('*')
@@ -235,6 +292,9 @@ function createNotesStore(): NoteStore {
         fetchNotes,
         createNote,
         getDeletedNotes,
+        restoreNote,
+        restoreAllNotes,
+        emptyTrash,
         subscribeToRealtimeNotes,
         unsubscribeFromRealtimeNotes,
         updateNote,
@@ -252,3 +312,4 @@ export const notes = createNotesStore();
 
 // Create a writable store for the selected note
 export const selectedNote = writable<Note | null>(null);
+

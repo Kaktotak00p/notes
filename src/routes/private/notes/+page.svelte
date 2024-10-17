@@ -20,6 +20,8 @@
 	import type { Session, SupabaseClient } from '@supabase/supabase-js';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { onMount } from 'svelte';
+	import { tasks } from '$lib/stores/tasks';
 
 	export let data: {
 		session: Session;
@@ -61,8 +63,6 @@
 	$: loadNoteContent($selectedNote);
 
 	$: parsedContent = parseMarkdown(noteContent);
-
-	$: console.log('Notes updated:', notesList);
 
 	// Category renaming
 	function handleCategoryRename(result: { type: string; data?: any }) {
