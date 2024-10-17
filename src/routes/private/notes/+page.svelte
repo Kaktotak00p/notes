@@ -168,7 +168,7 @@
 	// Auto-save functionality to save the note 5 seconds after the user stops typing
 	function startAutoSave() {
 		if (autoSaveTimer) clearTimeout(autoSaveTimer);
-		autoSaveTimer = setTimeout(saveNote, 5000); // Save after 5 seconds of inactivity
+		autoSaveTimer = setTimeout(saveNote, 20000); // Save after 5 seconds of inactivity
 	}
 
 	// Save the currently selected note and switch back to preview mode
@@ -424,9 +424,7 @@
 				<div class="flex flex-col w-full h-full gap-8 px-8 pt-4">
 					<!-- Title -->
 					<input
-						on:keyup={saveNote}
-						on:abort={saveNote}
-						on:focusout={saveNote}
+						on:blur={saveNote}
 						bind:value={fileName}
 						class="text-2xl font-semibold bg-transparent border-none outline-none focus:ring-0"
 					/>
