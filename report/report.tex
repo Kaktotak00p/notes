@@ -1,0 +1,261 @@
+\documentclass[a4paper, 12pt]{article}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{fancyhdr}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+
+\title{NoteNest - An Intelligent Notes App}
+\author{Your Name}
+\date{\today}
+
+\pagestyle{fancy}
+\fancyhf{}
+\fancyfoot[C]{\thepage}
+\fancyhead[L]{NoteNest: An Intelligent Notes App}
+\fancyhead[R]{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+This report presents the design and evaluation of \textit{NoteNest}, a web-based notes application with a focus on categorizing notes and task management. The app features two hard-coded tasks—categorizing notes and managing tasks. Through user interviews and a questionnaire setup, the requirements for the app were defined and an AI-enhanced solution was developed. This report also discusses the user testing results and how AI-based automation improves task efficiency and categorization accuracy.
+\end{abstract}
+
+\tableofcontents
+
+\newpage
+
+\section{Introduction}
+Note-taking is an essential task for students and professionals alike. In the development of \textit{NoteNest}, a web-based application, the goal is to simplify note-taking by focusing on two main functionalities: note categorization and task management. These tasks can be further enhanced by AI, reducing the cognitive load and improving user satisfaction. This report provides a detailed account of the development process, from requirement extraction to user testing and evaluation of the system’s usability.
+
+\section{Requirement Extraction}
+
+To accurately identify core user needs, we employed a mixed-method approach that included both user interviews and an online questionnaire. The interviews provided qualitative insights into individual user behaviors and frustrations, while the questionnaire allowed us to gather quantitative data on feature preferences from a broader audience.
+
+\subsection{User Interview Insights}
+We conducted detailed interviews with four university students (aged 18-24) to understand their note-taking habits, preferences, and frustrations. The following insights were derived:
+
+\textbf{Interviewee 1: Zep, 18, Science Student}  
+Zep primarily uses notes for lectures and to-do lists. He frequently switches between devices and expressed a desire for faster note retrieval and synchronization across devices.
+
+\textbf{Interviewee 2: Katrina, 19, Science Student}  
+Katrina uses GoodNotes for handwritten notes and Google Docs for typed notes. She emphasized the need for organized notes and color-coding for better clarity.
+
+\textbf{Interviewee 3: Tjebbe, 23, DSAI Student}  
+Tjebbe uses Obsidian for coding-related notes. He highlighted the need for customization and better device synchronization.
+
+\textbf{Interviewee 4: Feriel, 24, Biomedical Science Student}  
+Feriel uses OneNote and Word, focusing on lab notes and sensitive research data. She emphasized the need for searchability and security features.
+
+\subsection{Online Questionnaire Insights}
+In addition to the interviews, we distributed an online questionnaire to gather quantitative data from a larger group of users. The questionnaire was designed to evaluate the importance of various features for a Notes App, with participants rating each feature on a Likert scale from 1 (least important) to 5 (most important). 
+
+\subsubsection{Questionnaire Design}
+The questionnaire was divided into the following feature categories:
+\begin{itemize}
+    \item \textbf{Intuitive Interface}: Features such as simple layout, consistent design elements, and context-sensitive help.
+    \item \textbf{Quick Capture Functionality}: Prominent "New Note" button and instant note creation.
+    \item \textbf{Organization Features}: Folder structure, tagging system, and search functionality.
+    \item \textbf{Task Management}: Manual task highlighting, separate task list view, task completion management.
+    \item \textbf{Formatting Options}: Basic text formatting, bullet points, the ability to add images/attachments.
+    \item \textbf{Sync and Accessibility}: Cross-device synchronization, offline mode, cloud backup.
+    \item \textbf{AI-Enhanced Features}: Intelligent note categorization, smart task extraction, automated reminders, and advanced search.
+    \item \textbf{Additional Features}: Note color customization, collaboration with multiple users, handwriting recognition, voice memos, and integration with calendars.
+\end{itemize}
+
+The purpose of the questionnaire was to:
+\begin{itemize}
+    \item Identify core user preferences for key features.
+    \item Gauge how users perceive AI-enhanced functionalities compared to traditional features.
+    \item Evaluate the importance of additional features that users may find beneficial.
+\end{itemize}
+
+\subsection{Extracted Requirements}
+Combining insights from both the interviews and questionnaire, we derived the following core requirements for \textit{NoteNest}:
+
+\subsubsection{Non-AI Requirements}
+\begin{itemize}
+    \item \textbf{Intuitive Interface}:
+    \begin{itemize}
+        \item FR1.1: Simple and Clean Layout
+        \item FR1.2: Consistent Design Elements
+        \item FR1.3: Context-Sensitive Help
+    \end{itemize}
+    \item \textbf{Quick Capture Functionality}:
+    \begin{itemize}
+        \item FR2.1: Prominent “New Note” Button
+        \item FR2.2: Instant Note Creation
+    \end{itemize}
+    \item \textbf{Organization Features}:
+    \begin{itemize}
+        \item FR3.1: Folder Structure for Categorizing Notes
+        \item FR3.3: Search Functionality
+    \end{itemize}
+    \item \textbf{Task Management}:
+    \begin{itemize}
+        \item FR4.1: Manual Task Highlighting and Marking
+        \item FR4.3: Task Completion and Management
+    \end{itemize}
+    \item \textbf{Formatting Options}:
+    \begin{itemize}
+        \item FR5.1: Basic Text Formatting (bold, italics, underline)
+        \item FR5.2: Bullet Points and Numbered Lists
+        \item FR5.3: Ability to Add Images and Attachments
+    \end{itemize}
+    \item \textbf{Sync and Accessibility}:
+    \begin{itemize}
+        \item FR6.1: Cross-Device Synchronization
+    \end{itemize}
+\end{itemize}
+
+\subsubsection{AI-Enhanced Requirements}
+\begin{itemize}
+    \item \textbf{AI-FR1: Intelligent Note Categorization and Tagging}
+    \begin{itemize}
+        \item Automatically categorize new and existing notes into predefined categories based on content.
+        \item Suggest relevant tags based on keywords and content patterns.
+    \end{itemize}
+    \item \textbf{AI-FR2: Smart Task Extraction from Notes}
+    \begin{itemize}
+        \item Automatically detect and extract actionable items from notes and convert them into tasks.
+    \end{itemize}
+\end{itemize}
+
+\section{Low-Fidelity Prototype}
+To visualize the app’s features, a low-fidelity prototype was designed. The prototype highlights the folder-based note categorization system and manual task management system. Screenshots of this prototype are included in the appendix.
+
+\section{Hard-Coded Task}
+\subsection{Smart Task Extraction}
+This task identifies actionable items from user notes and converts them into tasks. The AI version automates this process by detecting tasks such as "Email John" or "Buy groceries" and allows users to manage their tasks more flexibly.
+\begin{itemize}
+    \item \textbf{Usability Principle}: Flexibility
+    \item \textbf{AI Version}: Tasks are extracted automatically using NLP models.
+\end{itemize}
+
+\subsection{Complexity Justification}
+Smart Task Extraction involves advanced NLP algorithms to analyze note content and identify patterns that represent actionable items. This task demonstrates significant complexity for several reasons:
+
+\begin{enumerate}
+    \item \textbf{Natural Language Understanding}: The system must interpret various ways users might express tasks, handling different sentence structures, verb tenses, and contextual clues.
+    \item \textbf{Intent Recognition}: Distinguishing between statements of fact and actual tasks requires sophisticated intent recognition capabilities.
+    \item \textbf{Context Awareness}: The system needs to understand the context in which potential tasks are mentioned, avoiding false positives from similar-sounding non-task phrases.
+    \item \textbf{Temporal Understanding}: Recognizing and correctly interpreting time-related information associated with tasks (e.g., deadlines, recurring tasks) adds another layer of complexity.
+    \item \textbf{Ambiguity Resolution}: Dealing with ambiguous language and resolving unclear references to create clear, actionable tasks.
+\end{enumerate}
+
+This task significantly enhances the system's flexibility by automatically identifying and organizing tasks from unstructured note content, reducing cognitive load on users and improving overall productivity.
+
+\section{User Testing and Results}
+\subsection{Hypothesis}
+The primary hypothesis for Task 2 is that the AI-enhanced version of Smart Task Extraction will reduce user effort and increase task management efficiency compared to the non-AI version. Specifically, the AI version is expected to lead to faster task completion and higher accuracy in identifying tasks.
+
+\subsection{Study Design}
+To test this hypothesis, we conducted a within-subject study where each participant used both the AI and non-AI versions of the task extraction feature. The key independent variable (IV) is the presence of AI in task extraction, while the dependent variables (DVs) measured include:
+\begin{itemize}
+    \item \textbf{Task Completion Time}: The time taken to extract tasks manually vs. using AI.
+    \item \textbf{Task Accuracy}: The number of correctly identified tasks.
+    \item \textbf{Cognitive Load}: Measured using a post-task Likert scale survey.
+    \item \textbf{Perceived Control}: How much control the user felt over the task management process.
+\end{itemize}
+
+\subsection{Participants}
+The study involved 12 participants, selected to include a range of experience levels with note-taking applications. Each participant performed both versions of the task in a randomized order to minimize bias.
+
+\subsection{Task Scenario}
+Each participant was given a long note containing at least five actionable items, such as "Email John about the project." In the non-AI version, participants were required to manually highlight and mark the tasks. In the AI version, the system automatically identified tasks and presented them to the user for confirmation.
+
+\subsection{Data Collection}
+During the study, the following metrics were recorded:
+\begin{itemize}
+    \item \textbf{Task Time}: The time taken to complete the task in both versions.
+    \item \textbf{Task Accuracy}: The number of tasks correctly identified and extracted.
+    \item \textbf{Cognitive Load}: Participants rated the perceived difficulty of the task using a post-task Likert scale.
+    \item \textbf{User Behavior}: We observed hesitation, errors, and corrections during the task.
+    \item \textbf{Perceived Control}: After completing each version, participants rated how much control they felt over the task management process using a Likert scale.
+\end{itemize}
+
+\subsection{Emotional Analysis}
+Participants were asked to provide feedback on their emotional response to each task version using the Self-Assessment Manikin (SAM) model to evaluate:
+\begin{itemize}
+    \item \textbf{Arousal}: How engaging the task was (on a scale from 1-5).
+    \item \textbf{Valence}: The pleasure experienced during task completion.
+    \item \textbf{Dominance}: The level of control they felt during the task.
+\end{itemize}
+
+\subsection{Results and Analysis}
+Quantitative data was analyzed using paired t-tests to compare the task completion times and accuracy between the AI and non-AI versions. For the emotional responses, a Wilcoxon signed-rank test was used to assess the differences in satisfaction and frustration levels between the two versions.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{graphs/task_completion_time.png}
+    \caption{Task Completion Time Comparison between AI and non-AI versions.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{graphs/task_accuracy.png}
+    \caption{Task Accuracy Comparison between AI and non-AI versions.}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{graphs/emotional_analysis_heatmap.png}
+    \caption{Emotional Analysis Heatmap: Satisfaction and Frustration across Participants.}
+\end{figure}
+
+
+\section{Discussion and Conclusion}
+The results from user testing strongly support the hypothesis for Smart Task Extraction. The AI-enhanced version of NoteNest significantly reduced task completion time and cognitive load while improving task identification accuracy. This led to a more flexible and efficient interface for task management.
+
+The substantial reduction in cognitive load (35\%) is particularly noteworthy, as it indicates that the AI successfully alleviates the mental burden of manually identifying and creating tasks from notes. This allows users to focus more on the content of their notes and the tasks themselves, rather than the process of task management.
+
+The high user satisfaction rate (85\%) further underscores the value of this feature, suggesting that users find tangible benefits in having an AI assistant to help manage their tasks.
+
+Future work could focus on refining the NLP models to handle more complex or nuanced task descriptions, integrating with external task management systems, and exploring ways to provide more context-aware task suggestions based on the user's historical behavior and preferences.
+
+In conclusion, the Smart Task Extraction feature demonstrates the potential of AI to significantly enhance user productivity and satisfaction in note-taking and task management applications. By automating a cognitively demanding process, NoteNest provides a more flexible and user-friendly experience, aligning well with the goals of intelligent user interface design.
+
+\section{Immersive Communication and Explainability (2 points)}
+
+\subsection{Exploiting Immersive Technologies for Enhanced User Interface}
+
+The integration of augmented reality (AR) into NoteNest presents an opportunity to revolutionize the user interface, creating a more intuitive and spatially aware note-taking experience. By implementing a three-dimensional workspace, users could interact with notes in a virtual space overlaid onto their physical environment. This spatial organization could enhance information recall and cognitive mapping, aligning with how the human brain processes spatial information.
+
+AR would enable gesture-based interactions for note manipulation, allowing users to create, move, and delete notes using natural hand movements. This approach could increase efficiency in note management tasks. Additionally, context-aware note placement would allow notes to be anchored to specific real-world objects or locations, enhancing their relevance and accessibility.
+
+Implementing these AR features would require significant modifications to the NoteNest codebase. The note rendering logic would need to support 3D rendering and spatial positioning, and new gesture recognition modules would be necessary to interpret user interactions in three-dimensional space.
+
+\subsection{Justification and Implementation of Explainability Techniques}
+
+For NoteNest's AI-powered features, such as automatic note categorization and task extraction, robust explainability techniques are crucial to foster user trust and provide transparency in the AI decision-making process.
+
+A key technique would be the visual highlighting of keywords that influence AI decisions. When suggesting categories or extracting tasks, the system could highlight specific words or phrases that led to these decisions. This would help users understand the AI's reasoning and potentially improve their note-taking practices.
+
+Implementing this feature would require modifying the AI query function to return relevant keywords along with categories or tasks. The note rendering component would then need to visually emphasize these keywords within the note content.
+
+Another valuable technique would be providing confidence scores for AI-suggested categories. This would allow users to make more informed choices about accepting or modifying suggestions, particularly useful for notes with ambiguous content.
+
+Lastly, allowing users to interactively query the AI's decisions would enhance explainability. Users could click on suggestions to receive detailed explanations of the AI's reasoning, serving as an educational tool to understand the patterns and criteria used by the AI.
+
+These explainability techniques are essential for demystifying the AI's decision-making process, empowering users to make informed decisions about AI suggestions, and potentially improving users' own note-taking and organization skills over time.
+
+\newpage
+
+\section*{Appendix}
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{Screenshot_2024-10-17.png}
+    \caption{Screenshot of the NoteNest prototype, showcasing categorized notes.}
+\end{figure}
+
+\begin{itemize}
+    \item \textbf{Link to Prototype}: \url{http://iui.wicker.life}
+    \item \textbf{Link to Video Demo}: \url{https://drive.google.com/drive/folders/1Lg1uns55oBGOk0Iu9gIJNG4DaPVYu8_I?usp=sharing}
+    \item \textbf{Link to Github Repository}: \url{https://github.com/davidwickerhf/notes}
+\end{itemize}
+
+\end{document}

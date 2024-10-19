@@ -27,7 +27,7 @@
 	onDestroy(() => {
 		notes.unsubscribeFromRealtimeNotes();
 		categories.unsubscribeFromRealtimeCategories();
-		// newtasks.unsubscribeFromRealtimeTasks();
+		tasks.unsubscribeFromRealtimeTasks();
 	});
 
 	onMount(() => {

@@ -1,6 +1,5 @@
 import { fail } from '@sveltejs/kit';
 import type { Actions } from './$types';
-import { categories } from '$lib/stores/categories';
 
 export const actions: Actions = {
     newcategory: async ({ request, locals }) => {
