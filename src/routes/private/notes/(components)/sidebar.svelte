@@ -86,7 +86,7 @@
 		</div>
 
 		<!-- List of options -->
-		<div class="flex flex-col flex-grow w-full gap-2 px-4 mt-8 overflow-hidden">
+		<div class="flex flex-col flex-grow w-full gap-2 px-4 pb-8 mt-8 overflow-y-scroll">
 			<SidebarButton
 				icon={House}
 				text="Home"

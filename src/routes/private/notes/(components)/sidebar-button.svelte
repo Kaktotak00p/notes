@@ -11,7 +11,7 @@
 	size="sm"
 	variant="ghost"
 	on:click={onClick}
-	class="{selected ? 'bg-sidebar-foreground' : ''} hover:bg-sidebar-foreground/80"
+	class="{selected ? 'bg-sidebar-foreground' : ''} hover:bg-sidebar-foreground/80 py-2 h-fit"
 >
 	<div class="flex flex-row items-center w-full gap-4">
 		<svelte:component this={icon} class="w-4 h-4" />
