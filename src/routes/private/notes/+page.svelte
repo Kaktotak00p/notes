@@ -58,6 +58,8 @@
 		return filtered.filter((note) => note.categoryid === categoryId);
 	});
 
+	$: console.log('Update in notes: ', $notes.length);
+
 	// Update content when the selected note changes
 	$: if ($selectedNote) {
 		console.log('Changed selected: ', $selectedNote?.fileName, $selectedNote?.content);
@@ -206,7 +208,7 @@
 	async function deleteNote(noteId: string) {
 		const deletedNote = await notesApi.moveToTrash(data.supabase, noteId);
 		if (deletedNote) {
-			notes.update((currentNotes) => currentNotes.filter((note) => note.id !== noteId));
+			// notes.update((currentNotes) => currentNotes.filter((note) => note.id !== noteId));
 			selectedNote.set(null);
 			toast.success('Note moved to trash');
 		} else {

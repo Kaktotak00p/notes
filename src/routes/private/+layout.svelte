@@ -263,8 +263,8 @@
 	}
 
 	// // Load notes, categories and tasks on load
-	onMount(async () => {
-		if (data.session.user) {
+	$: if ($page && data.session.user) {
+		(async () => {
 			const fetchedNotes = await notesApi.fetchNotes(data.supabase, data.session.user.id);
 			const fetchedCategories = await categoriesApi.fetchCategories(
 				data.supabase,
@@ -276,6 +276,10 @@
 			categories.set(fetchedCategories);
 			tasks.set(fetchedTasks);
 
+			notesApi.unsubscribeFromNotes(data.supabase);
+			categoriesApi.unsubscribeFromCategories(data.supabase);
+			tasksApi.unsubscribeFromTasks(data.supabase);
+
 			notesApi.subscribeToNotes(data.supabase, data.session.user.id, handleRealtimeUpdate);
 			categoriesApi.subscribeToCategories(
 				data.supabase,
@@ -283,8 +287,8 @@
 				handleCategoryUpdate
 			);
 			tasksApi.subscribeToTasks(data.supabase, data.session.user.id, handleTaskUpdate);
-		}
-	});
+		})();
+	}
 
 	onDestroy(() => {
 		notesApi.unsubscribeFromNotes(data.supabase);
@@ -294,6 +298,7 @@
 
 	function handleRealtimeUpdate(payload: any) {
 		const { eventType, new: newRecord, old: oldRecord } = payload;
+		console.log('Realtime note update: ', payload);
 		notes.update((currentNotes) => {
 			switch (eventType) {
 				case 'INSERT':
