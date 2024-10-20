@@ -3,9 +3,6 @@
 
 	import { toast } from 'svelte-sonner';
 	import { type Note, selectedNote } from '$lib/stores/notes';
-	import { notes } from '$lib/stores';
-	import { tasks as tasksNew } from '$lib/stores';
-	import { categories } from '$lib/stores';
 	import Sortable from 'sortablejs';
 	import { Sidebar } from './notes/(components)';
 	import { type Session, type SupabaseClient } from '@supabase/supabase-js';
@@ -13,6 +10,11 @@
 	import { type Category } from '$lib/stores/categories';
 	import { tasks as tasks, type TaskList, type Task } from '$lib/stores/tasksOld';
 	import { page } from '$app/stores';
+	import { onMount, onDestroy } from 'svelte';
+	import * as notesApi from '$lib/supabase/notes';
+	import * as categoriesApi from '$lib/supabase/categoriesApi';
+	import * as tasksApi from '$lib/supabase/tasksApi';
+	import { writable } from 'svelte/store';
 
 	export let data: {
 		session: Session;
@@ -36,14 +38,50 @@
 	let newTaskName = '';
 	let sidebarOpen = false;
 
+	const categories = writable<categoriesApi.Category[]>([]);
+
+	onMount(async () => {
+		if (data.session.user) {
+			const fetchedCategories = await categoriesApi.fetchCategories(
+				data.supabase,
+				data.session.user.id
+			);
+			categories.set(fetchedCategories);
+			categoriesApi.subscribeToCategories(
+				data.supabase,
+				data.session.user.id,
+				handleCategoryUpdate
+			);
+		}
+	});
+
+	onDestroy(() => {
+		notesApi.unsubscribeFromNotes(data.supabase);
+		categoriesApi.unsubscribeFromCategories(data.supabase);
+	});
+
+	function handleCategoryUpdate(payload: any) {
+		const { eventType, new: newRecord, old: oldRecord } = payload;
+		categories.update((currentCategories) => {
+			switch (eventType) {
+				case 'INSERT':
+					return [...currentCategories, newRecord];
+				case 'UPDATE':
+					return currentCategories.map((category) =>
+						category.id === newRecord.id ? newRecord : category
+					);
+				case 'DELETE':
+					return currentCategories.filter((category) => category.id !== oldRecord.id);
+				default:
+					return currentCategories;
+			}
+		});
+	}
+
 	$: selectedTab =
 		$page.url.searchParams.get('categoryid') ||
 		($page.url.pathname === '/private' ? 'home' : $page.url.pathname.replace('/private/', '')) ||
 		'home';
-
-	// Categories state
-
-	let newCategoryName = '';
 
 	// Components
 	let sortableDiv: HTMLElement | null = null;
@@ -98,7 +136,7 @@
 			categoryid,
 			deleted: false
 		};
-		const supabaseNote = await notes.createNote(newNote);
+		const supabaseNote = await notesApi.createNote(data.supabase, newNote);
 
 		// Get back supabase note id
 		console.log('Supabase note: ', supabaseNote);
@@ -114,28 +152,6 @@
 		if (!window.location.pathname.includes('/private/notes')) {
 			goto('/private/notes');
 		}
-	}
-
-	// TODO Remove
-	function createTaskList() {
-		if (!newNoteName) {
-			toast.error('Please enter a name for the new task list');
-			return;
-		}
-
-		if (newNoteName.trim()) {
-			$tasks = [...$tasks, { name: newNoteName.trim(), tasks: [] }];
-			newNoteName = '';
-		}
-
-		// Open the new task list
-		loadTaskList({ name: newNoteName.trim(), tasks: [] });
-	}
-
-	// TODO Remove
-	function deleteTaskList(listName: string) {
-		tasks.deleteTaskList(listName);
-		toast.success('Task list deleted');
 	}
 
 	// TODO Change
@@ -156,86 +172,18 @@
 		newTaskName = '';
 	}
 
-	// TODO Change
-	function deleteTask(listName: string, taskId: string) {
-		tasks.deleteTask(listName, taskId);
-
-		// Refresh the selected task list
-		selectedTaskList = $tasks.find((taskList) => taskList.name === listName) || null;
-		toast.success('Task deleted');
-	}
-
-	// TODO Change
-	function toggleTask(listName: string, taskId: string) {
-		console.log('toggleTask', listName, taskId);
-		tasks.toggleTask(listName, taskId);
-
-		// Refresh the selected task list
-		selectedTaskList = $tasks.find((taskList) => taskList.name === listName) || null;
-		toast.success('Task status updated');
-	}
-
-	// Function to add a new category
-	async function addCategory() {
-		if (!newCategoryName.trim()) {
-			toast.error('Please enter a category name');
-			return;
-		}
-		try {
-			await categories.createCategory({
-				userId: data.session.user.id,
-				category: newCategoryName.trim()
-			});
-			newCategoryName = '';
-			toast.success('Category added');
-		} catch (error) {
-			if (error instanceof Error && error.message === 'Category already exists') {
-				toast.error('Category already exists');
-			} else {
-				console.error('Error adding category:', error);
-				toast.error('Failed to add category');
-			}
-		}
-	}
-
-	// Function to delete a category
-	async function deleteCategory(categoryId: string) {
-		try {
-			// Delete the category from the database
-			await categories.deleteCategoryPermanently(categoryId);
-
-			// Update notes that have this category to be uncategorized
-			$notes.forEach(async (note) => {
-				if (note.categoryid === categoryId) {
-					// Update note
-					const updatedNote = { ...note, categoryid: null };
-					await notes.updateNote(updatedNote);
-				}
-			});
-
-			// If the selected note's category was deleted, update it
-			if ($selectedNote && $selectedNote.categoryid === categoryId) {
-				selectedNote.update((note) => ({ ...$selectedNote, categoryid: null }));
-			}
-
-			toast.success(`Category deleted successfully`);
-		} catch (error) {
-			console.error('Error deleting category:', error);
-			toast.error('Failed to delete category');
-		}
-	}
-
 	// Function to assign category to a note
 	async function assignCategory(note: Note | null, categoryId: string) {
 		if (!note) return;
 
 		const updatedNote = { ...note, categoryid: categoryId };
-		await notes.updateNote(updatedNote);
+		await notesApi.updateNote(data.supabase, updatedNote);
 		// Refresh the selected note
 		if ($selectedNote) selectedNote.update((note) => ({ ...$selectedNote, categoryid: null }));
 
 		// Get the category name for the toast message
-		const category = $categories.find((c) => c.id === categoryId);
+		const categories = await categoriesApi.fetchCategories(data.supabase, data.session.user.id);
+		const category = categories.find((c) => c.id === categoryId);
 		const categoryName = category ? category.category : 'Unknown';
 
 		toast.success(`Category "${categoryName}" assigned`);
@@ -310,16 +258,21 @@
 			} else {
 				// Handle categorization
 				if (aiResponse && aiResponse.category) {
-					const existingCategory = $categories.find(
-						(c) => aiResponse && c.category === aiResponse.category
+					const categories = await categoriesApi.fetchCategories(
+						data.supabase,
+						data.session.user.id
+					);
+
+					const existingCategory = categories.find(
+						(c: Category) => aiResponse && c.category === aiResponse.category
 					);
 					if (!existingCategory) {
-						categories.createCategory({
+						await categoriesApi.createCategory(data.supabase, {
 							userId: data.session.user.id,
 							category: aiResponse.category
 						});
 					}
-					const categoryToAssign = existingCategory || $categories[$categories.length - 1];
+					const categoryToAssign = existingCategory || categories[categories.length - 1];
 					assignCategory(note, categoryToAssign.id);
 					toast.success(`Category "${aiResponse.category}" assigned by AI`);
 				} else {
@@ -357,7 +310,7 @@
 	}
 
 	// TODO Function to handle AI button click
-	function handleAiButtonClick() {
+	async function handleAiButtonClick() {
 		if (!selectedNote) {
 			toast.error('No note selected');
 			return;
@@ -365,9 +318,11 @@
 
 		let selectedText = getSelectedText();
 
+		const categories = await categoriesApi.fetchCategories(data.supabase, data.session.user.id);
+
 		queryAI({
 			note: $selectedNote,
-			availableCategories: $categories,
+			availableCategories: categories,
 			selectedText
 		});
 	}
@@ -397,6 +352,16 @@
 	$: if ($selectedNote) {
 		document.addEventListener('mouseup', captureSelectedText);
 	}
+
+	onMount(async () => {
+		if (data.session && data.session.user) {
+			await Promise.all([
+				notesApi.fetchNotes(data.supabase, data.session.user.id),
+				categoriesApi.fetchCategories(data.supabase, data.session.user.id),
+				tasksApi.fetchTasks(data.supabase, data.session.user.id)
+			]);
+		}
+	});
 </script>
 
 <div class="fixed flex flex-row w-screen h-screen p-2 overflow-y-hidden bg-background">
@@ -406,6 +371,7 @@
 		<Sidebar
 			bind:selectedTab
 			email={data.session.user.email ?? 'No email connected'}
+			categories={$categories}
 			{addNote}
 			{addTask}
 			{logout}

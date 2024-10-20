@@ -1,128 +1,150 @@
 <script lang="ts">
 	import Page from '$lib/components/ui/pages/page.svelte';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
-	import { onMount } from 'svelte';
-	import { notes } from '$lib/stores';
+	import { onMount, onDestroy } from 'svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Dialog from '$lib/components/ui/dialog';
 	import Button from '$lib/components/ui/button/button.svelte';
-	import type { Note } from '$lib/stores/notes';
-	import { Tag } from 'lucide-svelte';
-	import { selectedNote } from '$lib/stores/notes';
-	import { Ellipsis, Trash } from 'lucide-svelte';
+	import { Tag, Ellipsis, Trash, RotateCcw } from 'lucide-svelte';
 	import { marked } from 'marked';
-	import { onDestroy } from 'svelte';
-	import { categories } from '$lib/stores';
 	import { toast } from 'svelte-sonner';
-	import { RotateCcw } from 'lucide-svelte';
+	import { writable } from 'svelte/store';
+	import * as notesApi from '$lib/supabase/notes';
+	import * as categoriesApi from '$lib/supabase/categoriesApi';
+	import type { SupabaseClient, Session } from '@supabase/supabase-js';
 
-	export let data;
+	export let data: {
+		supabase: SupabaseClient;
+		session: Session;
+	};
 
-	let deletedNotes: Note[] = [];
-	let selected: Note | null = null;
+	const deletedNotes = writable<notesApi.Note[]>([]);
+	const categories = writable<categoriesApi.Category[]>([]);
+	let selected: notesApi.Note | null = null;
 
 	let restoreDialogOpen: boolean = false;
 	let deleteDialogOpen: boolean = false;
 
-	let unsubscribe: () => void;
-
 	onMount(async () => {
-		await notes.initialize(data.supabase);
-		deletedNotes = await notes.getDeletedNotes();
-
-		unsubscribe = notes.subscribe(async ($notes) => {
-			deletedNotes = await notes.getDeletedNotes();
-		});
-	});
-
-	onDestroy(() => {
-		if (unsubscribe) {
-			unsubscribe();
+		if (data.session.user) {
+			const fetchedNotes = await notesApi.fetchNotes(data.supabase, data.session.user.id);
+			deletedNotes.set(fetchedNotes.filter((note) => note.deleted));
+			const fetchedCategories = await categoriesApi.fetchCategories(
+				data.supabase,
+				data.session.user.id
+			);
+			categories.set(fetchedCategories);
+			notesApi.subscribeToNotes(data.supabase, data.session.user.id, handleRealtimeUpdate);
 		}
 	});
 
+	onDestroy(() => {
+		notesApi.unsubscribeFromNotes(data.supabase);
+	});
+
+	function handleRealtimeUpdate(payload: any) {
+		const { eventType, new: newRecord, old: oldRecord } = payload;
+		deletedNotes.update((currentNotes) => {
+			switch (eventType) {
+				case 'INSERT':
+					return newRecord.deleted ? [newRecord, ...currentNotes] : currentNotes;
+				case 'UPDATE':
+					if (newRecord.deleted) {
+						return currentNotes.map((note) => (note.id === newRecord.id ? newRecord : note));
+					} else {
+						return currentNotes.filter((note) => note.id !== newRecord.id);
+					}
+				case 'DELETE':
+					return currentNotes.filter((note) => note.id !== oldRecord.id);
+				default:
+					return currentNotes;
+			}
+		});
+	}
+
 	function parseMarkdown(content: string): string {
-		console.log(content);
-		const markedContent = marked(content) as string;
-		console.log(markedContent);
-		return markedContent;
+		return marked(content) as string;
 	}
 
 	async function restoreAllNotes() {
-		// Return if there are no notes
-		if (deletedNotes.length === 0) {
+		if ($deletedNotes.length === 0) {
 			toast.error('No notes to restore');
 			restoreDialogOpen = false;
 			return;
 		}
 
 		try {
-			await notes.restoreAllNotes();
-			deletedNotes = [];
+			for (const note of $deletedNotes) {
+				await notesApi.updateNote(data.supabase, { ...note, deleted: false });
+			}
+			deletedNotes.set([]);
 			restoreDialogOpen = false;
 			selected = null;
+			toast.success('All notes restored');
 		} catch (error) {
 			console.error('Error restoring all notes:', error);
-			// You might want to add some error handling or user feedback here
+			toast.error('Failed to restore all notes');
 		}
 	}
 
 	async function emptyTrash() {
-		// Return if there are no notes
-		if (deletedNotes.length === 0) {
+		if ($deletedNotes.length === 0) {
 			toast.error('No notes to delete');
 			deleteDialogOpen = false;
 			return;
 		}
 
 		try {
-			await notes.emptyTrash();
-			deletedNotes = [];
+			for (const note of $deletedNotes) {
+				await notesApi.deletePermanently(data.supabase, note.id);
+			}
+			deletedNotes.set([]);
 			deleteDialogOpen = false;
 			selected = null;
+			toast.success('Trash emptied');
 		} catch (error) {
 			console.error('Error emptying trash:', error);
-			// You might want to add some error handling or user feedback here
+			toast.error('Failed to empty trash');
 		}
 	}
 
 	async function restoreNote(noteId: string | undefined) {
-		if (!noteId) {
-			return;
-		}
+		if (!noteId) return;
 
 		try {
-			await notes.restoreNote(noteId);
-			deletedNotes = deletedNotes.filter((note) => note.id !== noteId);
-			selected = null;
+			const noteToRestore = $deletedNotes.find((note) => note.id === noteId);
+			if (noteToRestore) {
+				await notesApi.updateNote(data.supabase, { ...noteToRestore, deleted: false });
+				deletedNotes.update((notes) => notes.filter((note) => note.id !== noteId));
+				selected = null;
+				toast.success('Note restored');
+			}
 		} catch (error) {
 			console.error('Error restoring note:', error);
+			toast.error('Failed to restore note');
 		}
 	}
 
 	async function deleteNote(noteId: string) {
 		try {
-			await notes.deletePermanently(noteId);
-			deletedNotes = deletedNotes.filter((note) => note.id !== noteId);
+			await notesApi.deletePermanently(data.supabase, noteId);
+			deletedNotes.update((notes) => notes.filter((note) => note.id !== noteId));
 			selected = null;
+			toast.success('Note permanently deleted');
 		} catch (error) {
 			console.error('Error deleting note:', error);
+			toast.error('Failed to delete note');
 		}
 	}
 
-	function formatDate(date: string) {
-		const dateObj = new Date(date);
-		return dateObj.toLocaleDateString('en-US', {
-			month: 'long',
-			day: 'numeric',
-			year: 'numeric'
-		});
+	function formatDate(dateString: string): string {
+		return new Date(dateString).toLocaleString();
 	}
 </script>
 
 <Page title="Trash">
 	<div slot="filter-bar" class="flex items-center justify-between w-full">
-		<p class="text-sm text-primary/40">{deletedNotes.length} notes</p>
+		<p class="text-sm text-primary/40">{$deletedNotes.length} notes</p>
 
 		<!-- Action buttons -->
 		<div class="flex items-center gap-2">
@@ -189,7 +211,7 @@
 	<div slot="navigator" class="w-full">
 		<!-- Notes list -->
 		<div class="flex flex-col w-full h-full gap-2 overflow-y-scroll">
-			{#each deletedNotes as note (note.id)}
+			{#each $deletedNotes as note (note.id)}
 				<button
 					class="flex flex-col w-full px-6 py-8 border rounded-md h-28 hover:bg-gray-100/80 {selected &&
 					note.id === selected.id

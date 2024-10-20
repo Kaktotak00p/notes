@@ -5,30 +5,11 @@
 	import { browser } from '$app/environment';
 	import { invalidate } from '$app/navigation';
 	import { Toaster } from 'svelte-sonner';
-	import { notes } from '$lib/stores';
-	import { categories } from '$lib/stores';
-	import { tasks } from '$lib/stores';
-	import { initializeStores } from '$lib/stores';
 
 	export let data;
 	$: ({ session, supabase } = data);
 
 	let showFlashscreen = false;
-
-	onMount(async () => {
-		const {
-			data: { user }
-		} = await supabase.auth.getUser();
-		if (user) {
-			await initializeStores(user.id, supabase);
-		}
-	});
-
-	onDestroy(() => {
-		// notes.unsubscribeFromRealtimeNotes();
-		categories.unsubscribeFromRealtimeCategories();
-		tasks.unsubscribeFromRealtimeTasks();
-	});
 
 	onMount(() => {
 		if (browser) {

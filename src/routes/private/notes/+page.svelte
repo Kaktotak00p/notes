@@ -1,11 +1,10 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onMount, onDestroy } from 'svelte';
 	import { derived, writable } from 'svelte/store';
 	import { Page } from '$lib/components/ui/pages';
 	import { marked } from 'marked'; // Import the Markdown parser
-	// import { notes } from '$lib/stores';
-	// import { type Note, selectedNote } from '$lib/stores/notes';
-	import { categories } from '$lib/stores';
+	import * as notesApi from '$lib/supabase/notes';
+	import * as categoriesApi from '$lib/supabase/categoriesApi';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
@@ -21,16 +20,16 @@
 	import type { Session, SupabaseClient } from '@supabase/supabase-js';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
-	import { onMount } from 'svelte';
-	import * as notesApi from '$lib/supabase/notes';
-	import { selectedNote, type Note } from '$lib/stores/notes';
 
 	export let data: {
 		session: Session;
 		supabase: SupabaseClient;
 	};
 
-	let notesList: Note[] = [];
+	const notes = writable<notesApi.Note[]>([]);
+	const categories = writable<categoriesApi.Category[]>([]);
+	const selectedNote = writable<notesApi.Note | null>(null);
+
 	let isEditing: boolean = true;
 	let noteContent = '';
 	let parsedContent = '';
@@ -40,8 +39,6 @@
 	let categoryDialogOpen: boolean = false;
 	let categoryDeleteDialogOpen: boolean = false;
 	let newCategoryName: string = '';
-
-	const notes = writable<Note[]>([]);
 
 	// Get the categoryid from the URL
 	$: categoryId = $page.url.searchParams.get('categoryid');
@@ -63,11 +60,67 @@
 		return filtered.filter((note) => note.categoryid === categoryId);
 	});
 
-	$: notesList = $filteredNotes;
+	// Update content when the selected note changes
+	$: if ($selectedNote) {
+		loadNoteContent($selectedNote);
+	}
 
-	$: loadNoteContent($selectedNote);
+	onMount(async () => {
+		if (data.session.user) {
+			const fetchedNotes = await notesApi.fetchNotes(data.supabase, data.session.user.id);
+			notes.set(fetchedNotes);
+			const fetchedCategories = await categoriesApi.fetchCategories(
+				data.supabase,
+				data.session.user.id
+			);
+			categories.set(fetchedCategories);
+			notesApi.subscribeToNotes(data.supabase, data.session.user.id, handleRealtimeUpdate);
+			categoriesApi.subscribeToCategories(
+				data.supabase,
+				data.session.user.id,
+				handleCategoryUpdate
+			);
+		}
+	});
 
-	$: parsedContent = parseMarkdown(noteContent);
+	onDestroy(() => {
+		notesApi.unsubscribeFromNotes(data.supabase);
+		categoriesApi.unsubscribeFromCategories(data.supabase);
+	});
+
+	function handleRealtimeUpdate(payload: any) {
+		const { eventType, new: newRecord, old: oldRecord } = payload;
+		notes.update((currentNotes) => {
+			switch (eventType) {
+				case 'INSERT':
+					return [newRecord, ...currentNotes];
+				case 'UPDATE':
+					return currentNotes.map((note) => (note.id === newRecord.id ? newRecord : note));
+				case 'DELETE':
+					return currentNotes.filter((note) => note.id !== oldRecord.id);
+				default:
+					return currentNotes;
+			}
+		});
+	}
+
+	function handleCategoryUpdate(payload: any) {
+		const { eventType, new: newRecord, old: oldRecord } = payload;
+		categories.update((currentCategories) => {
+			switch (eventType) {
+				case 'INSERT':
+					return [...currentCategories, newRecord];
+				case 'UPDATE':
+					return currentCategories.map((category) =>
+						category.id === newRecord.id ? newRecord : category
+					);
+				case 'DELETE':
+					return currentCategories.filter((category) => category.id !== oldRecord.id);
+				default:
+					return currentCategories;
+			}
+		});
+	}
 
 	// Category renaming
 	function handleCategoryRename(result: { type: string; data?: any }) {
@@ -97,7 +150,7 @@
 
 	// Add a new note
 	async function addNote(categoryid: string | null) {
-		const newNote: Omit<Note, 'id' | 'created_at' | 'updated_at'> = {
+		const newNote: Omit<notesApi.Note, 'id' | 'created_at' | 'updated_at'> = {
 			userId: data.session.user.id,
 			fileName: 'New Note',
 			content: '',
@@ -138,7 +191,7 @@
 	}
 
 	// Load the selected note content
-	async function loadNoteContent(note: Note | null) {
+	async function loadNoteContent(note: notesApi.Note | null) {
 		if (note) {
 			noteContent = note.content;
 			fileName = note.fileName;
@@ -154,7 +207,7 @@
 		if (!categoryId || categoryId === 'uncategorized') return;
 
 		// Delete the category
-		await categories.deleteCategoryPermanently(id);
+		await categoriesApi.deleteCategoryPermanently(data.supabase, id);
 
 		// Remove the categoryid from any notes that have it
 		const notesToUpdate = $notes.filter((note) => note.categoryid === id);
@@ -187,36 +240,19 @@
 			return;
 		}
 
-		// Check if there are changes before saving
 		if ($selectedNote.content === noteContent && $selectedNote.fileName === fileName) {
 			console.log('No changes detected, skipping save');
 			return;
 		}
 
-		// Fetch the latest version of the note from the server
-		const latestNote = await notesApi.fetchNotes(data.supabase, data.session.user.id);
-		const currentNote = latestNote.find((note) => note.id === $selectedNote?.id);
-
-		if (
-			currentNote &&
-			(currentNote.content !== $selectedNote.content ||
-				currentNote.fileName !== $selectedNote.fileName)
-		) {
-			// There's a conflict
-			toast.error('Conflict detected. Please refresh and try again.');
-			return;
-		}
-
-		// No conflict, proceed with save
-		const updatedNote = {
+		const updatedNote = await notesApi.updateNote(data.supabase, {
 			...$selectedNote,
 			content: noteContent,
 			fileName: fileName
-		};
+		});
 
-		const savedNote = await notesApi.updateNote(data.supabase, updatedNote);
-		if (savedNote) {
-			selectedNote.set(savedNote);
+		if (updatedNote) {
+			selectedNote.set(updatedNote);
 			toast.success('Note saved');
 		} else {
 			toast.error('Error saving note');
@@ -240,64 +276,10 @@
 		return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 	}
 
-	onMount(async () => {
-		if (data.session.user) {
-			const fetchedNotes = await notesApi.fetchNotes(data.supabase, data.session.user.id);
-			notes.set(fetchedNotes);
-			notesApi.subscribeToNotes(data.supabase, data.session.user.id, handleRealtimeUpdate);
-			console.log(
-				'+page.svelte: Subscribed to notes: ',
-				$notes.length,
-				fetchedNotes.length,
-				data.session.user.id
-			);
-		} else {
-			console.error('No user found');
-			toast.error('No user found');
-		}
-	});
-
-	onDestroy(() => {
-		notesApi.unsubscribeFromNotes(data.supabase);
-	});
-
-	function handleRealtimeUpdate(payload: any) {
-		if (payload.eventType) {
-			// This is a database change
-			const { eventType, new: newRecord, old: oldRecord } = payload;
-			updateNotesList(eventType, newRecord, oldRecord);
-		} else if (payload.type === 'broadcast' && payload.event === 'note_update') {
-			// This is a real-time update from another user
-			updateNotesList('UPDATE', payload.payload);
-		}
-	}
-
-	function updateNotesList(eventType: string, newRecord?: Note, oldRecord?: Note) {
-		notes.update((currentNotes) => {
-			switch (eventType) {
-				case 'INSERT':
-					return [newRecord!, ...currentNotes];
-				case 'UPDATE':
-					return currentNotes.map((note) => (note.id === newRecord!.id ? newRecord! : note));
-				case 'DELETE':
-					return currentNotes.filter((note) => note.id !== oldRecord!.id);
-				default:
-					return currentNotes;
-			}
-		});
-
-		if (eventType === 'UPDATE' && $selectedNote && $selectedNote.id === newRecord!.id) {
-			selectedNote.set(newRecord!);
-			noteContent = newRecord!.content;
-			fileName = newRecord!.fileName;
-			parsedContent = parseMarkdown(noteContent);
-		}
-	}
-
 	// Function to handle category change
 	async function handleCategoryChange(newCategoryId: string) {
 		if ($selectedNote) {
-			const updatedNote: Note = {
+			const updatedNote: notesApi.Note = {
 				...$selectedNote,
 				categoryid: newCategoryId !== 'uncategorized' ? newCategoryId : null
 			};
@@ -317,7 +299,7 @@
 
 <Page title={categoryName}>
 	<div slot="filter-bar" class="flex items-center justify-between w-full">
-		<p class="text-sm text-primary/40">{notesList.length} notes</p>
+		<p class="text-sm text-primary/40">{$filteredNotes.length} notes</p>
 
 		<!-- Action buttons -->
 		<div class="flex items-center gap-2">
@@ -416,7 +398,7 @@
 	<div slot="navigator" class="w-full">
 		<!-- Notes list -->
 		<div class="flex flex-col w-full h-full gap-2 overflow-y-scroll">
-			{#each notesList as note (note.id)}
+			{#each $filteredNotes as note (note.id)}
 				<button
 					class="flex flex-col w-full px-6 py-8 border rounded-md h-28 hover:bg-gray-100/80 {$selectedNote &&
 					note.id === $selectedNote.id
@@ -434,7 +416,7 @@
 
 						{#if !categoryId}
 							{#if note.categoryid}
-								{#await categories.getCategory(note.categoryid)}
+								{#await $categories.find((c) => c.id === note.categoryid)}
 									<p class="text-xs font-light text-primary/40">Loading...</p>
 								{:then category}
 									<Badge class="rounded-sm" variant="secondary">

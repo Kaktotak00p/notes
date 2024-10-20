@@ -7,6 +7,7 @@
 	import * as Dialog from '$lib/components/ui/dialog';
 	import { Label } from '$lib/components/ui/label';
 	import { toast } from 'svelte-sonner';
+	import type { Category } from '$lib/supabase/categoriesApi';
 	import {
 		Trash,
 		Menu,
@@ -21,12 +22,12 @@
 		Check
 	} from 'lucide-svelte';
 
-	import { categories } from '$lib/stores';
 	import { goto } from '$app/navigation';
 	import { enhance } from '$app/forms';
 
 	export let email: string;
 	export let selectedTab: string;
+	export let categories: Category[];
 
 	export let addNote: (categoryid: string | null) => void;
 	export let addTask: (content: string) => void;
@@ -180,7 +181,7 @@
 				</Collapsible.Trigger>
 				<Collapsible.Content>
 					<div class="flex flex-col gap-2 pl-6">
-						{#each $categories as category}
+						{#each categories as category}
 							<SidebarButton
 								icon={Tag}
 								text={category.category}
