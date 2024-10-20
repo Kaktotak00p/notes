@@ -32,11 +32,11 @@
 	let noteContent = '';
 	let parsedContent = '';
 	let fileName = '';
-	let autoSaveTimer: ReturnType<typeof setTimeout> | null = null;
 	let textareaRef: any;
 	let categoryDialogOpen: boolean = false;
 	let categoryDeleteDialogOpen: boolean = false;
 	let newCategoryName: string = '';
+	let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
 	// Get the categoryid from the URL
 	$: categoryId = $page.url.searchParams.get('categoryid');
@@ -60,7 +60,7 @@
 
 	// Update content when the selected note changes
 	$: if ($selectedNote) {
-		console.log('Changed selected: ', $selectedNote);
+		console.log('Changed selected: ', $selectedNote?.fileName, $selectedNote?.content);
 		loadNoteContent($selectedNote);
 	}
 
@@ -86,8 +86,15 @@
 	// Update the note content and apply the markdown parsing in real-time
 	function updateContent(event: any) {
 		noteContent = event.target.value;
-		parsedContent = parseMarkdown(noteContent); // Parse markdown as user types
-		startAutoSave();
+		parsedContent = parseMarkdown(noteContent);
+		saveNoteDebounced();
+	}
+
+	function saveNoteDebounced() {
+		if (saveTimeout) clearTimeout(saveTimeout);
+		saveTimeout = setTimeout(() => {
+			saveNote();
+		}, 1000); // Save after 1 second of inactivity
 	}
 
 	// Add a new note
@@ -124,14 +131,6 @@
 		}, 0);
 	}
 
-	// Reset viewed content
-	function resetViewedContent() {
-		$selectedNote = null;
-		noteContent = '';
-		parsedContent = '';
-		isEditing = false;
-	}
-
 	// Load the selected note content
 	async function loadNoteContent(note: notesApi.Note | null) {
 		if (note) {
@@ -139,8 +138,8 @@
 			parsedContent = parseMarkdown(noteContent);
 			fileName = note.fileName;
 			isEditing = false;
-			if (autoSaveTimer) clearTimeout(autoSaveTimer);
 		} else {
+			parsedContent = '';
 			noteContent = '';
 			fileName = '';
 		}
@@ -175,12 +174,6 @@
 		}, 0);
 	}
 
-	// Auto-save functionality to save the note 5 seconds after the user stops typing
-	function startAutoSave() {
-		if (autoSaveTimer) clearTimeout(autoSaveTimer);
-		autoSaveTimer = setTimeout(saveNote, 15000); // Save after 5 seconds of inactivity
-	}
-
 	// Save the currently selected note and switch back to preview mode
 	async function saveNote() {
 		if (!$selectedNote) {
@@ -193,6 +186,7 @@
 			return;
 		}
 
+		console.log('New contents: ', noteContent, fileName);
 		const updatedNote = await notesApi.updateNote(data.supabase, {
 			...$selectedNote,
 			content: noteContent,
@@ -200,8 +194,9 @@
 		});
 
 		if (updatedNote) {
+			console.log('Updated contents: ', updatedNote.content, updatedNote.fileName);
 			selectedNote.set(updatedNote);
-			toast.success('Note saved');
+			// toast.success('Note saved');
 		} else {
 			toast.error('Error saving note');
 		}
@@ -449,6 +444,7 @@
 					<!-- Title -->
 					<input
 						on:blur={saveNote}
+						on:input={saveNoteDebounced}
 						bind:value={fileName}
 						class="text-2xl font-semibold bg-transparent border-none outline-none focus:ring-0"
 					/>
@@ -459,7 +455,7 @@
 							bind:this={textareaRef}
 							class="w-full h-full p-2.5 text-base resize-none bg-transparent border-none outline-none focus:ring-0 focus-visible:outline-none"
 							bind:value={noteContent}
-							on:input={updateContent}
+							on:input={saveNoteDebounced}
 							on:blur={() => {
 								isEditing = false;
 								saveNote();

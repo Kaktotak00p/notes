@@ -79,14 +79,6 @@ export async function updateNote(supabase: SupabaseClient, updatedNote: Partial<
         return null;
     }
 
-    if (data && notesSubscription) {
-        notesSubscription.send({
-            type: 'broadcast',
-            event: 'note_update',
-            payload: data[0]
-        });
-    }
-
     return data ? data[0] : null;
 }
 
