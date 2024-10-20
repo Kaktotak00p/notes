@@ -1,11 +1,11 @@
 <script lang="ts">
+	import { categories } from '$lib/stores/categories';
 	import { onMount, onDestroy } from 'svelte';
 	import { derived, writable } from 'svelte/store';
 	import { Page } from '$lib/components/ui/pages';
 	import { marked } from 'marked'; // Import the Markdown parser
-	import * as notesApi from '$lib/supabase/notes';
+	import * as notesApi from '$lib/supabase/notesApi';
 	import * as categoriesApi from '$lib/supabase/categoriesApi';
-	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
 	import { Input } from '$lib/components/ui/input';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
@@ -20,15 +20,13 @@
 	import type { Session, SupabaseClient } from '@supabase/supabase-js';
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
+	import { selectedNote } from '$lib/stores/notes';
+	import { notes } from '$lib/stores/notes';
 
 	export let data: {
 		session: Session;
 		supabase: SupabaseClient;
 	};
-
-	const notes = writable<notesApi.Note[]>([]);
-	const categories = writable<categoriesApi.Category[]>([]);
-	const selectedNote = writable<notesApi.Note | null>(null);
 
 	let isEditing: boolean = true;
 	let noteContent = '';
@@ -62,64 +60,8 @@
 
 	// Update content when the selected note changes
 	$: if ($selectedNote) {
+		console.log('Changed selected: ', $selectedNote);
 		loadNoteContent($selectedNote);
-	}
-
-	onMount(async () => {
-		if (data.session.user) {
-			const fetchedNotes = await notesApi.fetchNotes(data.supabase, data.session.user.id);
-			notes.set(fetchedNotes);
-			const fetchedCategories = await categoriesApi.fetchCategories(
-				data.supabase,
-				data.session.user.id
-			);
-			categories.set(fetchedCategories);
-			notesApi.subscribeToNotes(data.supabase, data.session.user.id, handleRealtimeUpdate);
-			categoriesApi.subscribeToCategories(
-				data.supabase,
-				data.session.user.id,
-				handleCategoryUpdate
-			);
-		}
-	});
-
-	onDestroy(() => {
-		notesApi.unsubscribeFromNotes(data.supabase);
-		categoriesApi.unsubscribeFromCategories(data.supabase);
-	});
-
-	function handleRealtimeUpdate(payload: any) {
-		const { eventType, new: newRecord, old: oldRecord } = payload;
-		notes.update((currentNotes) => {
-			switch (eventType) {
-				case 'INSERT':
-					return [newRecord, ...currentNotes];
-				case 'UPDATE':
-					return currentNotes.map((note) => (note.id === newRecord.id ? newRecord : note));
-				case 'DELETE':
-					return currentNotes.filter((note) => note.id !== oldRecord.id);
-				default:
-					return currentNotes;
-			}
-		});
-	}
-
-	function handleCategoryUpdate(payload: any) {
-		const { eventType, new: newRecord, old: oldRecord } = payload;
-		categories.update((currentCategories) => {
-			switch (eventType) {
-				case 'INSERT':
-					return [...currentCategories, newRecord];
-				case 'UPDATE':
-					return currentCategories.map((category) =>
-						category.id === newRecord.id ? newRecord : category
-					);
-				case 'DELETE':
-					return currentCategories.filter((category) => category.id !== oldRecord.id);
-				default:
-					return currentCategories;
-			}
-		});
 	}
 
 	// Category renaming
@@ -194,6 +136,7 @@
 	async function loadNoteContent(note: notesApi.Note | null) {
 		if (note) {
 			noteContent = note.content;
+			parsedContent = parseMarkdown(noteContent);
 			fileName = note.fileName;
 			isEditing = false;
 			if (autoSaveTimer) clearTimeout(autoSaveTimer);
@@ -223,14 +166,19 @@
 			}
 		}
 
-		goto('/private/notes');
-		toast.success('Category deleted');
+		// Update selected note to null
+		selectedNote.set(null);
+
+		setTimeout(() => {
+			goto('/private/notes');
+			toast.success('Category deleted');
+		}, 0);
 	}
 
 	// Auto-save functionality to save the note 5 seconds after the user stops typing
 	function startAutoSave() {
 		if (autoSaveTimer) clearTimeout(autoSaveTimer);
-		autoSaveTimer = setTimeout(saveNote, 20000); // Save after 5 seconds of inactivity
+		autoSaveTimer = setTimeout(saveNote, 15000); // Save after 5 seconds of inactivity
 	}
 
 	// Save the currently selected note and switch back to preview mode

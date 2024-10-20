@@ -6,6 +6,7 @@
 	import { CirclePlusIcon, Star } from 'lucide-svelte';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import type { Session, SupabaseClient } from '@supabase/supabase-js';
+	import { tasks } from '$lib/stores/tasks';
 
 	export let data: {
 		session: Session;
@@ -14,8 +15,6 @@
 
 	let tab: 'yourtasks' | 'aisuggestions' = 'yourtasks';
 	let taskname: string = '';
-
-	const tasks = writable<tasksApi.Task[]>([]);
 
 	onMount(async () => {
 		if (data.session.user) {
@@ -75,8 +74,7 @@
 			userId: data.session.user.id,
 			task: taskname,
 			completed: false,
-			aiGenerated: false,
-			dueDate: null
+			aiGenerated: false
 		});
 		if (newTask) {
 			tasks.update((currentTasks) => [newTask, ...currentTasks]);

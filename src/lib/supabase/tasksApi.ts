@@ -48,7 +48,7 @@ export function unsubscribeFromTasks(supabase: SupabaseClient): void {
     }
 }
 
-export async function createTask(supabase: SupabaseClient, newTask: Omit<Task, 'id' | 'created_at' | 'updated_at'>): Promise<Task | null> {
+export async function createTask(supabase: SupabaseClient, newTask: Omit<Task, 'id' | 'created_at' | 'updated_at' | 'dueDate'>): Promise<Task | null> {
     const { data, error } = await supabase
         .from('tasks')
         .insert(newTask)

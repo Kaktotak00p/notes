@@ -3,13 +3,12 @@
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { onMount, onDestroy } from 'svelte';
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
-	import * as Dialog from '$lib/components/ui/dialog';
 	import Button from '$lib/components/ui/button/button.svelte';
 	import { Tag, Ellipsis, Trash, RotateCcw } from 'lucide-svelte';
 	import { marked } from 'marked';
 	import { toast } from 'svelte-sonner';
 	import { writable } from 'svelte/store';
-	import * as notesApi from '$lib/supabase/notes';
+	import * as notesApi from '$lib/supabase/notesApi';
 	import * as categoriesApi from '$lib/supabase/categoriesApi';
 	import type { SupabaseClient, Session } from '@supabase/supabase-js';
 

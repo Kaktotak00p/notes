@@ -3,6 +3,7 @@ import type { Actions } from './$types';
 
 export const actions: Actions = {
     newcategory: async ({ request, locals }) => {
+        console.log('New category action called in back-end');
         const session = locals.session;
         if (!session) {
             return fail(401, { error: 'Unauthorized' });
