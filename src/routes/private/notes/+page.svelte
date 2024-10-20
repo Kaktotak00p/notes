@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { derived } from 'svelte/store';
+	import { derived, writable } from 'svelte/store';
 	import { Page } from '$lib/components/ui/pages';
 	import { marked } from 'marked'; // Import the Markdown parser
-	import { notes } from '$lib/stores';
-	import { type Note, selectedNote } from '$lib/stores/notes';
+	// import { notes } from '$lib/stores';
+	// import { type Note, selectedNote } from '$lib/stores/notes';
 	import { categories } from '$lib/stores';
 	import { Textarea } from '$lib/components/ui/textarea';
 	import { Button } from '$lib/components/ui/button';
@@ -22,6 +22,8 @@
 	import { enhance } from '$app/forms';
 	import { goto } from '$app/navigation';
 	import { onMount } from 'svelte';
+	import * as notesApi from '$lib/supabase/notes';
+	import { selectedNote, type Note } from '$lib/stores/notes';
 
 	export let data: {
 		session: Session;
@@ -38,6 +40,8 @@
 	let categoryDialogOpen: boolean = false;
 	let categoryDeleteDialogOpen: boolean = false;
 	let newCategoryName: string = '';
+
+	const notes = writable<Note[]>([]);
 
 	// Get the categoryid from the URL
 	$: categoryId = $page.url.searchParams.get('categoryid');
@@ -100,16 +104,13 @@
 			categoryid: categoryid === 'uncategorized' ? null : categoryid,
 			deleted: false
 		};
-		const supabaseNote = await notes.createNote(newNote);
+		const createdNote = await notesApi.createNote(data.supabase, newNote);
 
-		// Get back supabase note id
-		console.log('Supabase note: ', supabaseNote);
-		if (supabaseNote) {
-			selectedNote.set(supabaseNote);
+		if (createdNote) {
+			selectedNote.set(createdNote);
 			toast.success('Note created');
 		} else {
 			toast.error('Error creating note');
-			return;
 		}
 	}
 
@@ -151,13 +152,21 @@
 
 	async function deleteCategory(id: string) {
 		if (!categoryId || categoryId === 'uncategorized') return;
+
 		// Delete the category
 		await categories.deleteCategoryPermanently(id);
 
 		// Remove the categoryid from any notes that have it
-		for (let note of $notes) {
-			if (note.categoryid === id) {
-				await notes.updateNote({ ...note, categoryid: null });
+		const notesToUpdate = $notes.filter((note) => note.categoryid === id);
+		for (let note of notesToUpdate) {
+			const updatedNote = await notesApi.updateNote(data.supabase, {
+				...note,
+				categoryid: null
+			});
+			if (updatedNote) {
+				notes.update((currentNotes) =>
+					currentNotes.map((n) => (n.id === updatedNote.id ? updatedNote : n))
+				);
 			}
 		}
 
@@ -181,38 +190,128 @@
 		// Check if there are changes before saving
 		if ($selectedNote.content === noteContent && $selectedNote.fileName === fileName) {
 			console.log('No changes detected, skipping save');
-			loadNoteContent($selectedNote);
 			return;
 		}
 
-		// Extract note data from the store
+		// Fetch the latest version of the note from the server
+		const latestNote = await notesApi.fetchNotes(data.supabase, data.session.user.id);
+		const currentNote = latestNote.find((note) => note.id === $selectedNote?.id);
+
+		if (
+			currentNote &&
+			(currentNote.content !== $selectedNote.content ||
+				currentNote.fileName !== $selectedNote.fileName)
+		) {
+			// There's a conflict
+			toast.error('Conflict detected. Please refresh and try again.');
+			return;
+		}
+
+		// No conflict, proceed with save
 		const updatedNote = {
 			...$selectedNote,
 			content: noteContent,
 			fileName: fileName
 		};
 
-		await notes.updateNote(updatedNote);
-		selectedNote.set(updatedNote);
-
-		loadNoteContent(updatedNote);
+		const savedNote = await notesApi.updateNote(data.supabase, updatedNote);
+		if (savedNote) {
+			selectedNote.set(savedNote);
+			toast.success('Note saved');
+		} else {
+			toast.error('Error saving note');
+		}
 	}
 
 	// Delete a note
-	async function deleteNote(id: string) {
-		if (!$selectedNote) {
-			toast.error('No note selected');
-			return;
+	async function deleteNote(noteId: string) {
+		const deletedNote = await notesApi.moveToTrash(data.supabase, noteId);
+		if (deletedNote) {
+			notes.update((currentNotes) => currentNotes.filter((note) => note.id !== noteId));
+			selectedNote.set(null);
+			toast.success('Note moved to trash');
+		} else {
+			toast.error('Error deleting note');
 		}
-
-		notes.moveToTrash(id);
-		resetViewedContent();
-		toast.success('Note deleted');
 	}
 
 	function formatDate(date: string) {
 		const dateObj = new Date(date);
 		return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+	}
+
+	onMount(async () => {
+		if (data.session.user) {
+			const fetchedNotes = await notesApi.fetchNotes(data.supabase, data.session.user.id);
+			notes.set(fetchedNotes);
+			notesApi.subscribeToNotes(data.supabase, data.session.user.id, handleRealtimeUpdate);
+			console.log(
+				'+page.svelte: Subscribed to notes: ',
+				$notes.length,
+				fetchedNotes.length,
+				data.session.user.id
+			);
+		} else {
+			console.error('No user found');
+			toast.error('No user found');
+		}
+	});
+
+	onDestroy(() => {
+		notesApi.unsubscribeFromNotes(data.supabase);
+	});
+
+	function handleRealtimeUpdate(payload: any) {
+		if (payload.eventType) {
+			// This is a database change
+			const { eventType, new: newRecord, old: oldRecord } = payload;
+			updateNotesList(eventType, newRecord, oldRecord);
+		} else if (payload.type === 'broadcast' && payload.event === 'note_update') {
+			// This is a real-time update from another user
+			updateNotesList('UPDATE', payload.payload);
+		}
+	}
+
+	function updateNotesList(eventType: string, newRecord?: Note, oldRecord?: Note) {
+		notes.update((currentNotes) => {
+			switch (eventType) {
+				case 'INSERT':
+					return [newRecord!, ...currentNotes];
+				case 'UPDATE':
+					return currentNotes.map((note) => (note.id === newRecord!.id ? newRecord! : note));
+				case 'DELETE':
+					return currentNotes.filter((note) => note.id !== oldRecord!.id);
+				default:
+					return currentNotes;
+			}
+		});
+
+		if (eventType === 'UPDATE' && $selectedNote && $selectedNote.id === newRecord!.id) {
+			selectedNote.set(newRecord!);
+			noteContent = newRecord!.content;
+			fileName = newRecord!.fileName;
+			parsedContent = parseMarkdown(noteContent);
+		}
+	}
+
+	// Function to handle category change
+	async function handleCategoryChange(newCategoryId: string) {
+		if ($selectedNote) {
+			const updatedNote: Note = {
+				...$selectedNote,
+				categoryid: newCategoryId !== 'uncategorized' ? newCategoryId : null
+			};
+			const result = await notesApi.updateNote(data.supabase, updatedNote);
+			if (result) {
+				selectedNote.set(result);
+				notes.update((currentNotes) =>
+					currentNotes.map((note) => (note.id === result.id ? result : note))
+				);
+				toast.success('Category updated');
+			} else {
+				toast.error('Failed to update category');
+			}
+		}
 	}
 </script>
 
@@ -362,16 +461,11 @@
 						{#key $selectedNote.categoryid}
 							<Select.Root
 								onSelectedChange={(v) => {
-									if ($selectedNote && v && typeof v.value === 'string') {
-										const updated = {
-											...$selectedNote,
-											categoryid: v.value !== 'uncategorized' ? v.value : null
-										};
-										notes.updateNote(updated);
-										selectedNote.set(updated);
+									if (v && typeof v.value === 'string') {
+										handleCategoryChange(v.value);
 									}
 								}}
-								selected={$selectedNote.categoryid
+								selected={$selectedNote?.categoryid
 									? { value: $selectedNote.categoryid }
 									: { value: 'uncategorized' }}
 							>
