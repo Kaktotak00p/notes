@@ -115,94 +115,96 @@
 				}}
 			/>
 
-			<Collapsible.Root bind:open={showCategories}>
-				<Collapsible.Trigger class="w-full">
-					<Button size="sm" variant="ghost" class="flex justify-between w-full">
-						<div class="flex flex-row items-center w-full gap-4">
-							<ChevronRight
-								class="w-4 h-4 transition-transform duration-300 {showCategories
-									? 'rotate-90'
-									: ''}"
-							/>
-							<p class="font-normal">Categories</p>
-						</div>
-
-						<!-- Add Category -->
-						<Dialog.Root bind:open={dialogOpen}>
-							<Dialog.Trigger
-								><Button
-									class="z-50"
-									variant="ghost"
-									size="icon"
-									on:click={(event) => {
-										event.stopPropagation();
-										dialogOpen = true;
-										showCategories = true;
+			<div class="flex flex-row items-start justify-between gap-2">
+				<Collapsible.Root bind:open={showCategories} class="w-full">
+					<Collapsible.Trigger class="w-full">
+						<Button size="sm" variant="ghost" class="flex justify-between w-full">
+							<div class="flex flex-row items-center w-full gap-4">
+								<ChevronRight
+									class="w-4 h-4 transition-transform duration-300 {showCategories
+										? 'rotate-90'
+										: ''}"
+								/>
+								<p class="font-normal">Categories</p>
+							</div>
+						</Button>
+					</Collapsible.Trigger>
+					<Collapsible.Content>
+						<div class="flex flex-col gap-2 pl-6">
+							{#each categories as category}
+								<SidebarButton
+									icon={Tag}
+									text={category.category}
+									selected={selectedTab === category.id}
+									onClick={() => {
+										goto(`/private/notes?categoryid=${category.id}`);
 									}}
-								>
-									<CirclePlus class="w-4 h-4"></CirclePlus>
-								</Button></Dialog.Trigger
-							>
-							<Dialog.Content>
-								<Dialog.Header>
-									<Dialog.Title>Create new category</Dialog.Title>
-									<Dialog.Description>
-										Categories are useful for grouping notes around a common topic. They are private
-										to you.
-									</Dialog.Description>
+								/>
+							{/each}
 
-									<form
-										method="POST"
-										action="?/newcategory"
-										class="flex flex-col w-full gap-2 pt-8"
-										use:enhance={() => {
-											return ({ result }) => {
-												handleNewCategory(result);
-											};
-										}}
-									>
-										<Label for="category-name" class="text-sm font-medium">Category name</Label>
-										<Input
-											name="category-name"
-											id="category-name"
-											placeholder="Enter category name"
-											bind:value={newCategoryName}
-											required
-										/>
-
-										<div class="flex justify-end w-full pt-6">
-											<Button type="submit"><Check class="w-4 h-4 mr-4"></Check> Save</Button>
-										</div>
-									</form>
-								</Dialog.Header>
-							</Dialog.Content>
-						</Dialog.Root>
-					</Button>
-				</Collapsible.Trigger>
-				<Collapsible.Content>
-					<div class="flex flex-col gap-2 pl-6">
-						{#each categories as category}
 							<SidebarButton
-								icon={Tag}
-								text={category.category}
-								selected={selectedTab === category.id}
+								icon={Archive}
+								text="Uncategorized"
+								selected={selectedTab === 'uncategorized'}
 								onClick={() => {
-									goto(`/private/notes?categoryid=${category.id}`);
+									goto(`/private/notes?categoryid=uncategorized`);
 								}}
 							/>
-						{/each}
+						</div>
+					</Collapsible.Content>
+				</Collapsible.Root>
 
-						<SidebarButton
-							icon={Archive}
-							text="Uncategorized"
-							selected={selectedTab === 'uncategorized'}
-							onClick={() => {
-								goto(`/private/notes?categoryid=uncategorized`);
+				<!-- Add Category -->
+				<Dialog.Root bind:open={dialogOpen}>
+					<Dialog.Trigger
+						><Button
+							class="z-50"
+							variant="ghost"
+							size="icon"
+							on:click={(event) => {
+								event.stopPropagation();
+								dialogOpen = true;
+								showCategories = true;
 							}}
-						/>
-					</div>
-				</Collapsible.Content>
-			</Collapsible.Root>
+						>
+							<CirclePlus class="w-4 h-4"></CirclePlus>
+						</Button></Dialog.Trigger
+					>
+					<Dialog.Content>
+						<Dialog.Header>
+							<Dialog.Title>Create new category</Dialog.Title>
+							<Dialog.Description>
+								Categories are useful for grouping notes around a common topic. They are private to
+								you.
+							</Dialog.Description>
+
+							<form
+								method="POST"
+								action="?/newcategory"
+								class="flex flex-col w-full gap-2 pt-8"
+								use:enhance={() => {
+									return ({ result }) => {
+										handleNewCategory(result);
+									};
+								}}
+							>
+								<Label for="category-name" class="text-sm font-medium">Category name</Label>
+								<Input
+									name="category-name"
+									id="category-name"
+									placeholder="Enter category name"
+									bind:value={newCategoryName}
+									required
+								/>
+
+								<div class="flex justify-end w-full pt-6">
+									<Button type="submit"><Check class="w-4 h-4 mr-4"></Check> Save</Button>
+								</div>
+							</form>
+						</Dialog.Header>
+					</Dialog.Content>
+				</Dialog.Root>
+			</div>
 
 			<SidebarButton
 				icon={Trash}

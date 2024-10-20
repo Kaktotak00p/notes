@@ -1,9 +1,9 @@
 <script lang="ts">
-	import { onMount, onDestroy } from 'svelte';
+	import { onMount, onDestroy, tick } from 'svelte';
 	import { writable } from 'svelte/store';
 	import * as tasksApi from '$lib/supabase/tasksApi';
 	import { Button } from '$lib/components/ui/button';
-	import { CirclePlusIcon, Star } from 'lucide-svelte';
+	import { CirclePlusIcon, Star, CheckCheckIcon } from 'lucide-svelte';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import type { Session, SupabaseClient } from '@supabase/supabase-js';
 	import { tasks } from '$lib/stores/tasks';
@@ -15,6 +15,8 @@
 
 	let tab: 'yourtasks' | 'aisuggestions' = 'yourtasks';
 	let taskname: string = '';
+	let showAddTask: boolean = false;
+	let taskInputRef: HTMLInputElement;
 
 	onMount(async () => {
 		if (data.session.user) {
@@ -77,9 +79,17 @@
 			aiGenerated: false
 		});
 		if (newTask) {
-			tasks.update((currentTasks) => [newTask, ...currentTasks]);
+			// tasks.update((currentTasks) => [newTask, ...currentTasks]);
 			taskname = '';
 		}
+	}
+
+	$: if (showAddTask) {
+		tick().then(() => {
+			if (taskInputRef) {
+				taskInputRef.focus();
+			}
+		});
 	}
 </script>
 
@@ -95,41 +105,14 @@
 		</div>
 
 		<!-- Task table -->
-		<div class="flex w-full h-full overflow-y-hidden">
-			<!-- Table header -->
-			<div class="flex flex-row justify-start w-full gap-4 pb-2 border-b h-fit">
-				<!-- Your tasks -->
-				<Button
-					class=""
-					variant="ghost"
-					on:click={() => {
-						tab = 'yourtasks';
-					}}
-				>
-					<CirclePlusIcon class="w-4 h-4 mr-4" />
-					Your tasks
-				</Button>
-
-				<!-- AI suggestions -->
-				<Button
-					class=""
-					variant="ghost"
-					on:click={() => {
-						tab = 'aisuggestions';
-					}}
-				>
-					<Star class="w-4 h-4 mr-4" />
-					AI Suggestions
-				</Button>
-			</div>
-
+		<div class="flex flex-col w-full h-full gap-2 overflow-y-hidden">
 			<!-- Task list -->
 			<div class="flex flex-col w-full h-full gap-2 overflow-y-auto">
 				<!-- Task -->
 				{#each $tasks as task}
-					<div class="flex flex-row justify-between w-full">
+					<div class="flex flex-row items-center justify-between w-full p-4 border rounded-md">
 						<!-- Check and task title -->
-						<div class="flex gap-6">
+						<div class="flex items-center gap-6">
 							<!-- Check -->
 							<Checkbox
 								checked={task.completed}
@@ -138,24 +121,62 @@
 							/>
 
 							<!-- Title -->
-							<input value={task.task} class="" on:blur={(event) => taskChanged(task, event)} />
+							<input
+								value={task.task}
+								class="flex-grow bg-transparent border-none outline-none rounded-t-md focus:ring-0"
+								on:blur={(event) => taskChanged(task, event)}
+							/>
 						</div>
 
 						<!-- Delete button -->
 						<!-- Implement delete functionality here -->
 					</div>
 				{/each}
-			</div>
-		</div>
 
-		<!-- Add task input -->
-		<div class="flex mt-4">
-			<input
-				bind:value={taskname}
-				placeholder="Add a new task"
-				class="flex-grow p-2 border rounded"
-			/>
-			<Button on:click={addTask}>Add Task</Button>
+				<!-- Add task input -->
+				{#if showAddTask}
+					<div class="flex flex-col mt-4 border rounded-md">
+						<div class="flex flex-row w-full border-b">
+							<input
+								bind:this={taskInputRef}
+								bind:value={taskname}
+								placeholder="Add a new task..."
+								class="flex-grow p-4 bg-transparent border-none outline-none rounded-t-md focus:ring-0"
+								on:keydown={(e) => {
+									if (e.key === 'Enter') {
+										e.preventDefault();
+										addTask();
+									}
+								}}
+							/>
+						</div>
+						<div class="flex flex-row justify-end w-full gap-2 p-2">
+							<Button
+								variant="outline"
+								on:click={() => {
+									showAddTask = false;
+									addTask();
+								}}
+							>
+								Cancel
+							</Button>
+							<Button on:click={addTask}>Add Task</Button>
+						</div>
+					</div>
+				{:else}
+					<Button
+						variant="ghost"
+						class="justify-start w-fit"
+						on:click={() => {
+							showAddTask = true;
+							taskname = '';
+						}}
+					>
+						<CirclePlusIcon class="w-4 h-4 mr-4" />
+						Add task
+					</Button>
+				{/if}
+			</div>
 		</div>
 	</div>
 </div>
