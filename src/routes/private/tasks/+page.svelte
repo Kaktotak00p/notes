@@ -7,13 +7,14 @@
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import type { Session, SupabaseClient } from '@supabase/supabase-js';
 	import { tasks } from '$lib/stores/tasks';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
+	import { EllipsisIcon } from 'lucide-svelte';
 
 	export let data: {
 		session: Session;
 		supabase: SupabaseClient;
 	};
 
-	let tab: 'yourtasks' | 'aisuggestions' = 'yourtasks';
 	let taskname: string = '';
 	let showAddTask: boolean = false;
 	let taskInputRef: HTMLInputElement;
@@ -129,6 +130,23 @@
 						</div>
 
 						<!-- Delete button -->
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger>
+								<Button variant="ghost">
+									<EllipsisIcon class="w-4 h-4" />
+								</Button>
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Content>
+								<DropdownMenu.Group>
+									<DropdownMenu.Label>My Account</DropdownMenu.Label>
+									<DropdownMenu.Separator />
+									<DropdownMenu.Item>Profile</DropdownMenu.Item>
+									<DropdownMenu.Item>Billing</DropdownMenu.Item>
+									<DropdownMenu.Item>Team</DropdownMenu.Item>
+									<DropdownMenu.Item>Subscription</DropdownMenu.Item>
+								</DropdownMenu.Group>
+							</DropdownMenu.Content>
+						</DropdownMenu.Root>
 						<!-- Implement delete functionality here -->
 					</div>
 				{/each}

@@ -22,6 +22,7 @@
 	import { goto } from '$app/navigation';
 	import { selectedNote } from '$lib/stores/notes';
 	import { notes } from '$lib/stores/notes';
+	import * as tasksApi from '$lib/supabase/tasksApi';
 
 	export let data: {
 		session: Session;
@@ -198,7 +199,24 @@
 		if (updatedNote) {
 			console.log('Updated contents: ', updatedNote.content, updatedNote.fileName);
 			selectedNote.set(updatedNote);
-			// toast.success('Note saved');
+
+			// Extract tasks from the updated note
+			console.log('Extracting tasks from note: ', noteContent);
+			const extractedTasks = await extractTasksFromNote(noteContent);
+			if (extractedTasks.length > 0) {
+				// Create tasks from extracted items
+				for (const task of extractedTasks) {
+					await tasksApi.createTask(data.supabase, {
+						userId: data.session.user.id,
+						task: task,
+						completed: false,
+						aiGenerated: true
+					});
+				}
+				console.log('Extracted tasks: ', extractedTasks);
+			} else {
+				console.log('No tasks extracted');
+			}
 		} else {
 			toast.error('Error saving note');
 		}
@@ -238,6 +256,38 @@
 			} else {
 				toast.error('Failed to update category');
 			}
+		}
+	}
+
+	async function extractTasksFromNote(noteContent: string): Promise<string[]> {
+		try {
+			const res = await fetch('/api/extract-tasks', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					noteContent
+				})
+			});
+
+			if (!res.ok) {
+				const errorData = await res.json();
+				console.error('Error extracting tasks:', errorData);
+				if (errorData.error.type === 'insufficient_quota') {
+					toast.error('AI quota exceeded. Please try again later or contact support.');
+				} else {
+					toast.error('Failed to extract tasks. Please try again.');
+				}
+				return [];
+			}
+
+			const data = await res.json();
+			return data.tasks as string[];
+		} catch (error) {
+			console.error('Error extracting tasks:', error);
+			toast.error('An unexpected error occurred. Please try again.');
+			return [];
 		}
 	}
 </script>
