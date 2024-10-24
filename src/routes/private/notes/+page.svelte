@@ -202,21 +202,7 @@
 
 			// Extract tasks from the updated note
 			console.log('Extracting tasks from note: ', noteContent);
-			const extractedTasks = await extractTasksFromNote(noteContent);
-			if (extractedTasks.length > 0) {
-				// Create tasks from extracted items
-				for (const task of extractedTasks) {
-					await tasksApi.createTask(data.supabase, {
-						userId: data.session.user.id,
-						task: task,
-						completed: false,
-						aiGenerated: true
-					});
-				}
-				console.log('Extracted tasks: ', extractedTasks);
-			} else {
-				console.log('No tasks extracted');
-			}
+			await extractTasksFromNote(noteContent, updatedNote.id);
 		} else {
 			toast.error('Error saving note');
 		}
@@ -259,7 +245,7 @@
 		}
 	}
 
-	async function extractTasksFromNote(noteContent: string): Promise<string[]> {
+	async function extractTasksFromNote(noteContent: string, noteId: string): Promise<string[]> {
 		try {
 			const res = await fetch('/api/extract-tasks', {
 				method: 'POST',
@@ -267,7 +253,8 @@
 					'Content-Type': 'application/json'
 				},
 				body: JSON.stringify({
-					noteContent
+					noteContent,
+					noteId
 				})
 			});
 
@@ -283,7 +270,8 @@
 			}
 
 			const data = await res.json();
-			return data.tasks as string[];
+			console.log('Extracted tasks:', data.tasks);
+			return data.tasks;
 		} catch (error) {
 			console.error('Error extracting tasks:', error);
 			toast.error('An unexpected error occurred. Please try again.');

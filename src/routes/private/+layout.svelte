@@ -95,7 +95,9 @@
 			userId: data.session.user.id,
 			task: 'New Task',
 			completed: false,
-			aiGenerated: false
+			aiGenerated: false,
+			noteId: null,
+			hash: null
 		};
 		const supabaseTask = await tasksApi.createTask(data.supabase, newTask);
 

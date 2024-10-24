@@ -77,7 +77,9 @@
 			userId: data.session.user.id,
 			task: taskname,
 			completed: false,
-			aiGenerated: false
+			aiGenerated: false,
+			noteId: null,
+			hash: null
 		});
 		if (newTask) {
 			// tasks.update((currentTasks) => [newTask, ...currentTasks]);

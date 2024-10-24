@@ -9,6 +9,8 @@ export interface Task {
     created_at: string;
     updated_at: string;
     completed: boolean;
+    noteId: string | null;
+    hash: string | null;
 }
 
 let tasksSubscription: RealtimeChannel | null = null;
