@@ -493,7 +493,7 @@
 					{#if isEditing}
 						<textarea
 							bind:this={textareaRef}
-							class="w-full h-full p-2.5 text-base resize-none bg-transparent border-none outline-none focus:ring-0 focus-visible:outline-none"
+							class="w-full h-full p-2.5 text-base resize-none bg-transparent border-none outline-none focus:ring-0 focus-visible:outline-none prose prose-sm max-w-none"
 							bind:value={noteContent}
 							on:input={saveNoteDebounced}
 							on:blur={() => {
@@ -503,9 +503,11 @@
 						/>
 					{:else}
 						<button class="flex w-full h-full text-left" on:click={switchToEditing}>
-							<div class="flex flex-col w-full h-full prose-sm prose max-w-none">
+							<div
+								class="flex flex-col w-full h-full p-2.5 text-base prose prose-sm max-w-none overflow-y-auto"
+							>
 								<div
-									class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5"
+									class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5 [&>p]:mb-4 [&>p]:whitespace-pre-line"
 								>
 									{@html parsedContent}
 								</div>
