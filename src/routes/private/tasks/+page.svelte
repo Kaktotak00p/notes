@@ -6,9 +6,10 @@
 	import { CirclePlusIcon, Star, CheckCheckIcon } from 'lucide-svelte';
 	import Checkbox from '$lib/components/ui/checkbox/checkbox.svelte';
 	import type { Session, SupabaseClient } from '@supabase/supabase-js';
-	import { tasks } from '$lib/stores/tasks';
+	import { tasks, aiGeneratedTasksByNoteId } from '$lib/stores/tasks';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { EllipsisIcon } from 'lucide-svelte';
+	import { Sparkles, X, Link } from 'lucide-svelte';
 
 	export let data: {
 		session: Session;
@@ -18,6 +19,7 @@
 	let taskname: string = '';
 	let showAddTask: boolean = false;
 	let taskInputRef: HTMLInputElement;
+	let showAiSuggestions: boolean = true;
 
 	onMount(async () => {
 		if (data.session.user) {
@@ -87,6 +89,25 @@
 		}
 	}
 
+	// function to retrieve Note name from id
+	async function getNoteNameById(noteId: string | null): Promise<string> {
+		if (!noteId) return 'Unknown Note';
+
+		try {
+			const { data: note, error } = await data.supabase
+				.from('notes')
+				.select('fileName')
+				.eq('id', noteId)
+				.single();
+
+			if (error) throw error;
+			return note?.fileName || 'Untitled Note';
+		} catch (error) {
+			console.error('Error fetching note name:', error);
+			return 'Error Fetching Note';
+		}
+	}
+
 	$: if (showAddTask) {
 		tick().then(() => {
 			if (taskInputRef) {
@@ -100,11 +121,27 @@
 	<!-- Navigator -->
 	<div class="flex flex-col w-full h-full px-4 pt-6">
 		<!-- Title -->
-		<p class="text-2xl font-medium">Tasks</p>
+		<div class="flex flex-row justify-between items-top">
+			<p class="text-2xl font-medium">Tasks</p>
+			{#if !showAiSuggestions}
+				<Button
+					variant="outline"
+					class="justify-start w-fit"
+					on:click={() => {
+						showAiSuggestions = true;
+					}}
+				>
+					<Sparkles class="w-4 h-4 mr-4" />
+					AI Suggestions
+				</Button>
+			{/if}
+		</div>
 
 		<!-- Filter bar -->
 		<div class="flex justify-between w-full gap-2 pt-6 pb-4">
-			<p class="text-sm text-primary/40">{$tasks.length} tasks</p>
+			<p class="text-sm text-primary/40">
+				{$tasks.filter((task) => task.aiGenerated === false).length} tasks
+			</p>
 		</div>
 
 		<!-- Task table -->
@@ -112,7 +149,7 @@
 			<!-- Task list -->
 			<div class="flex flex-col w-full h-full gap-2 overflow-y-auto">
 				<!-- Task -->
-				{#each $tasks as task}
+				{#each $tasks.filter((task) => task.aiGenerated === false) as task}
 					<div class="flex flex-row items-center justify-between w-full p-4 border rounded-md">
 						<!-- Check and task title -->
 						<div class="flex items-center gap-6">
@@ -199,4 +236,81 @@
 			</div>
 		</div>
 	</div>
+
+	<!-- AI Suggestions -->
+	{#if showAiSuggestions}
+		<div class="flex flex-col w-full h-full px-4 pt-4 border rounded-md bg-sidebar">
+			<div class="flex flex-row items-center justify-between">
+				<div class="flex flex-row items-center justify-start gap-4">
+					<Sparkles class="w-5 h-5" />
+					<p class="text-2xl font-medium">AI Suggestions</p>
+				</div>
+
+				<Button
+					variant="outline"
+					size="icon"
+					on:click={() => {
+						showAiSuggestions = false;
+					}}
+				>
+					<X class="w-4 h-4" />
+				</Button>
+			</div>
+
+			<div class="flex justify-between w-full gap-2 pt-6 pb-4">
+				<p class="text-sm text-primary/40">
+					{$tasks.filter((task) => task.aiGenerated === true).length} Suggestions
+				</p>
+			</div>
+
+			<!-- Task table -->
+			<div class="flex flex-col w-full h-full gap-2 overflow-y-hidden">
+				<!-- Task list -->
+				<div class="flex flex-col w-full h-full gap-2 overflow-y-auto">
+					<!-- Task -->
+					{#each $aiGeneratedTasksByNoteId as [noteId, tasks]}
+						<div class="flex flex-col w-full gap-2">
+							<div class="flex items-center gap-2 text-sm text-primary/40">
+								Tasks from
+								{#await getNoteNameById(noteId) then noteName}
+									<a href="/private/notes/{noteId}" class="flex items-center gap-2 underline">
+										{noteName}
+										<Link class="w-4 h-4" />
+									</a>
+								{:catch error}
+									{error}
+								{/await}
+							</div>
+							{#each tasks as task}
+								<div
+									class="flex flex-row items-center justify-between w-full p-4 border rounded-md"
+								>
+									<!-- Check and task title -->
+									<div class="flex items-center gap-6">
+										<!-- Check -->
+										<Checkbox
+											checked={task.completed}
+											class="rounded-full"
+											onCheckedChange={(e) => checkedChange(task)}
+										/>
+
+										<!-- Title -->
+										<input
+											value={task.task}
+											class="flex-grow bg-transparent border-none outline-none rounded-t-md focus:ring-0"
+											on:blur={(event) => taskChanged(task, event)}
+										/>
+									</div>
+
+									<!-- Delete button -->
+
+									<!-- Implement delete functionality here -->
+								</div>
+							{/each}
+						</div>
+					{/each}
+				</div>
+			</div>
+		</div>
+	{/if}
 </div>

@@ -500,7 +500,7 @@
 								isEditing = false;
 								saveNote();
 							}}
-						/>
+						></textarea>
 					{:else}
 						<button class="flex w-full h-full text-left" on:click={switchToEditing}>
 							<div
