@@ -14,8 +14,8 @@
   "devDependencies": {
     "@sveltejs/adapter-auto": "^3.0.0",
     "@sveltejs/adapter-vercel": "^5.4.3",
-    "@sveltejs/kit": "^2.0.0",
-    "@sveltejs/vite-plugin-svelte": "^3.0.0",
+    "@sveltejs/kit": "^2.7.2",
+    "@sveltejs/vite-plugin-svelte": "^3.1.2",
     "@types/eslint": "^9.6.0",
     "@types/jsonwebtoken": "^9.0.6",
     "@types/sortablejs": "^1.15.8",
