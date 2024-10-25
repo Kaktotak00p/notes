@@ -11,9 +11,10 @@
 	import * as AlertDialog from '$lib/components/ui/alert-dialog';
 	import * as Select from '$lib/components/ui/select';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import * as Collapsible from '$lib/components/ui/collapsible';
 	import { Label } from '$lib/components/ui/label';
 	import { toast } from 'svelte-sonner';
-	import { Trash, Ellipsis, Check } from 'lucide-svelte';
+	import { Trash, Ellipsis, Check, Wand } from 'lucide-svelte';
 	import { page } from '$app/stores';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { Badge } from '$lib/components/ui/badge';
@@ -22,7 +23,8 @@
 	import { goto } from '$app/navigation';
 	import { selectedNote } from '$lib/stores/notes';
 	import { notes } from '$lib/stores/notes';
-	import * as tasksApi from '$lib/supabase/tasksApi';
+	import { tasks } from '$lib/stores/tasks';
+	import { AiTask, Task } from '../(components)';
 
 	export let data: {
 		session: Session;
@@ -79,6 +81,11 @@
 		console.log('Changed selected: ', $selectedNote?.fileName, $selectedNote?.content);
 		loadNoteContent($selectedNote);
 	}
+
+	$: extractedTasks =
+		$selectedNote && $tasks.filter((task) => task.noteId === $selectedNote.id).length > 0
+			? $tasks.filter((task) => task.noteId === $selectedNote.id)
+			: [];
 
 	// Category renaming
 	function handleCategoryRename(result: { type: string; data?: any }) {
@@ -428,7 +435,6 @@
 	</div>
 
 	<!-- Note Content -->
-
 	<div slot="content" class="flex flex-col items-start justify-start h-full px-4 pt-4">
 		{#if $selectedNote}
 			<div class="flex flex-col w-full h-full gap-8">
@@ -488,10 +494,37 @@
 							</AlertDialog.Root>
 						</div>
 					</div>
-					<p class="text-sm text-primary/40">
-						Last edited on {formatDate($selectedNote.updated_at)}
-					</p>
+					<div class="flex items-center justify-between w-full">
+						<p class="text-sm text-primary/40">
+							Last edited on {formatDate($selectedNote.updated_at)}
+						</p>
+					</div>
 				</div>
+
+				<!-- Extracted Tasks -->
+				{#if extractedTasks.length > 0}
+					<Collapsible.Root class="w-full">
+						<Collapsible.Trigger class="w-full"
+							><div class="flex flex-col w-full gap-2 p-4 border rounded-md">
+								<p class="flex items-center text-sm font-semibold">
+									<Wand class="w-4 h-4 mr-4"></Wand>
+									Found {extractedTasks.length} tasks in this note
+								</p>
+							</div></Collapsible.Trigger
+						>
+						<Collapsible.Content>
+							<div class="flex flex-col w-full gap-2 pt-2">
+								{#each extractedTasks as task}
+									{#if task.aiGenerated}
+										<AiTask {task} {data} />
+									{:else}
+										<Task {task} {data} />
+									{/if}
+								{/each}
+							</div>
+						</Collapsible.Content>
+					</Collapsible.Root>
+				{/if}
 
 				<div class="flex flex-col w-full h-full gap-8 px-8 pt-4">
 					<!-- Title -->

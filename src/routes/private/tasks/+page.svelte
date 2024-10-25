@@ -12,6 +12,8 @@
 	import { Sparkles, X, Link, Ban, Check } from 'lucide-svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { toast } from 'svelte-sonner';
+	import { AiTask } from '../(components)';
+	import { Task } from '../(components)';
 
 	export let data: {
 		session: Session;
@@ -110,34 +112,6 @@
 		}
 	}
 
-	// Reject AI Suggestion
-	async function rejectAiSuggestion(task: tasksApi.Task) {
-		try {
-			await tasksApi.deleteTaskPermanently(data.supabase, task.id);
-			tasks.update((currentTasks) => currentTasks.filter((t) => t.id !== task.id));
-			toast.success('AI suggestion rejected');
-		} catch (error) {
-			tasks.update((currentTasks) => currentTasks.filter((t) => t.id !== task.id));
-			toast.success('AI suggestion rejected');
-		}
-	}
-
-	// Accept AI Suggestion
-	async function acceptAiSuggestion(task: tasksApi.Task) {
-		const updatedTask = await tasksApi.updateTask(data.supabase, {
-			...task,
-			aiGenerated: false
-		});
-		if (updatedTask) {
-			tasks.update((currentTasks) =>
-				currentTasks.map((t) => (t.id === updatedTask.id ? updatedTask : t))
-			);
-			toast.success('AI suggestion accepted');
-		} else {
-			toast.error('Failed to accept AI suggestion');
-		}
-	}
-
 	$: if (showAddTask) {
 		tick().then(() => {
 			if (taskInputRef) {
@@ -180,44 +154,7 @@
 			<div class="flex flex-col w-full h-full gap-2 overflow-y-auto">
 				<!-- Task -->
 				{#each $tasks.filter((task) => task.aiGenerated === false) as task}
-					<div class="flex flex-row items-center justify-between w-full p-4 border rounded-md">
-						<!-- Check and task title -->
-						<div class="flex items-center gap-6">
-							<!-- Check -->
-							<Checkbox
-								checked={task.completed}
-								class="rounded-full"
-								onCheckedChange={(e) => checkedChange(task)}
-							/>
-
-							<!-- Title -->
-							<input
-								value={task.task}
-								class="flex-grow bg-transparent border-none outline-none rounded-t-md focus:ring-0"
-								on:blur={(event) => taskChanged(task, event)}
-							/>
-						</div>
-
-						<!-- Delete button -->
-						<DropdownMenu.Root>
-							<DropdownMenu.Trigger>
-								<Button variant="ghost">
-									<EllipsisIcon class="w-4 h-4" />
-								</Button>
-							</DropdownMenu.Trigger>
-							<DropdownMenu.Content>
-								<DropdownMenu.Group>
-									<DropdownMenu.Label>My Account</DropdownMenu.Label>
-									<DropdownMenu.Separator />
-									<DropdownMenu.Item>Profile</DropdownMenu.Item>
-									<DropdownMenu.Item>Billing</DropdownMenu.Item>
-									<DropdownMenu.Item>Team</DropdownMenu.Item>
-									<DropdownMenu.Item>Subscription</DropdownMenu.Item>
-								</DropdownMenu.Group>
-							</DropdownMenu.Content>
-						</DropdownMenu.Root>
-						<!-- Implement delete functionality here -->
-					</div>
+					<Task {task} {data} />
 				{/each}
 
 				<!-- Add task input -->
@@ -315,46 +252,7 @@
 								<Badge variant="outline">{tasks.length}</Badge>
 							</div>
 							{#each tasks as task}
-								<div
-									class="flex flex-row items-center justify-between w-full p-4 border rounded-md"
-								>
-									<!-- Check and task title -->
-									<div class="flex items-center gap-6">
-										<!-- Check -->
-										<Checkbox
-											checked={task.completed}
-											class="rounded-full"
-											onCheckedChange={(e) => checkedChange(task)}
-										/>
-
-										<!-- Title -->
-										<input
-											value={task.task}
-											class="flex-grow bg-transparent border-none outline-none rounded-t-md focus:ring-0"
-											on:blur={(event) => taskChanged(task, event)}
-										/>
-									</div>
-
-									<!-- Delete button -->
-									<div class="flex gap-2">
-										<Button
-											variant="outline"
-											class="w-8 h-8 p-0"
-											on:click={() => rejectAiSuggestion(task)}
-										>
-											<Ban class="w-4 h-4 text-red-500" />
-										</Button>
-
-										<!-- Implement delete functionality here -->
-										<Button
-											variant="outline"
-											class="w-8 h-8 p-0"
-											on:click={() => acceptAiSuggestion(task)}
-										>
-											<Check class="w-4 h-4 " />
-										</Button>
-									</div>
-								</div>
+								<AiTask {task} {data} />
 							{/each}
 						</div>
 					{/each}

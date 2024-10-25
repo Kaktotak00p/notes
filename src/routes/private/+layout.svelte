@@ -1,10 +1,8 @@
 <script lang="ts">
-	import AiButton from './notes/(components)/AiButton.svelte';
-
 	import { toast } from 'svelte-sonner';
 	import { selectedNote } from '$lib/stores/notes';
 	import Sortable from 'sortablejs';
-	import { Sidebar } from './notes/(components)';
+	import { Sidebar } from './(components)';
 	import { type Session, type SupabaseClient } from '@supabase/supabase-js';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -369,5 +367,5 @@
 	<slot />
 
 	<!-- AI Button and Panel -->
-	<AiButton onClick={handleAiButtonClick} />
+	<!-- <AiButton onClick={handleAiButtonClick} /> -->
 </div>
