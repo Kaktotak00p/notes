@@ -49,6 +49,19 @@
 				: 'All Notes';
 	$: newCategoryName = categoryName ?? '';
 
+	// get noteId from the URL
+	$: noteId = $page.url.searchParams.get('id');
+
+	// If noteId is set, set selected note
+	$: if (noteId && $page && $filteredNotes) {
+		console.log('Finding selected note from parameters: ', noteId);
+		if ($filteredNotes.length > 0) {
+			selectedNote.set($filteredNotes.find((note) => note.id === noteId) ?? null);
+		} else {
+			selectedNote.set(null);
+		}
+	}
+
 	// Filter notes based on the selected category
 	$: filteredNotes = derived([notes, categories], ([$notes, $categories]) => {
 		let filtered = $notes.filter((note) => !note.deleted);

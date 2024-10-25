@@ -91,7 +91,7 @@ export async function deleteTaskPermanently(supabase: SupabaseClient, taskId: st
         .eq('id', taskId);
 
     if (error) {
-        console.error('Error deleting task permanently:', error);
+        throw error;
     }
 }
 

@@ -9,7 +9,9 @@
 	import { tasks, aiGeneratedTasksByNoteId } from '$lib/stores/tasks';
 	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { EllipsisIcon } from 'lucide-svelte';
-	import { Sparkles, X, Link } from 'lucide-svelte';
+	import { Sparkles, X, Link, Ban, Check } from 'lucide-svelte';
+	import Badge from '$lib/components/ui/badge/badge.svelte';
+	import { toast } from 'svelte-sonner';
 
 	export let data: {
 		session: Session;
@@ -105,6 +107,34 @@
 		} catch (error) {
 			console.error('Error fetching note name:', error);
 			return 'Error Fetching Note';
+		}
+	}
+
+	// Reject AI Suggestion
+	async function rejectAiSuggestion(task: tasksApi.Task) {
+		try {
+			await tasksApi.deleteTaskPermanently(data.supabase, task.id);
+			tasks.update((currentTasks) => currentTasks.filter((t) => t.id !== task.id));
+			toast.success('AI suggestion rejected');
+		} catch (error) {
+			tasks.update((currentTasks) => currentTasks.filter((t) => t.id !== task.id));
+			toast.success('AI suggestion rejected');
+		}
+	}
+
+	// Accept AI Suggestion
+	async function acceptAiSuggestion(task: tasksApi.Task) {
+		const updatedTask = await tasksApi.updateTask(data.supabase, {
+			...task,
+			aiGenerated: false
+		});
+		if (updatedTask) {
+			tasks.update((currentTasks) =>
+				currentTasks.map((t) => (t.id === updatedTask.id ? updatedTask : t))
+			);
+			toast.success('AI suggestion accepted');
+		} else {
+			toast.error('Failed to accept AI suggestion');
 		}
 	}
 
@@ -266,20 +296,23 @@
 			<!-- Task table -->
 			<div class="flex flex-col w-full h-full gap-2 overflow-y-hidden">
 				<!-- Task list -->
-				<div class="flex flex-col w-full h-full gap-2 overflow-y-auto">
+				<div class="flex flex-col w-full h-full gap-6 overflow-y-auto">
 					<!-- Task -->
 					{#each $aiGeneratedTasksByNoteId as [noteId, tasks]}
 						<div class="flex flex-col w-full gap-2">
-							<div class="flex items-center gap-2 text-sm text-primary/40">
-								Tasks from
-								{#await getNoteNameById(noteId) then noteName}
-									<a href="/private/notes/{noteId}" class="flex items-center gap-2 underline">
-										{noteName}
-										<Link class="w-4 h-4" />
-									</a>
-								{:catch error}
-									{error}
-								{/await}
+							<div class="flex items-center justify-between w-full gap-2 text-sm text-primary/40">
+								<div class="flex items-center gap-2">
+									Tasks from
+									{#await getNoteNameById(noteId) then noteName}
+										<a href="/private/notes?id={noteId}" class="flex items-center gap-2 underline">
+											{noteName}
+											<Link class="w-4 h-4" />
+										</a>
+									{:catch error}
+										{error}
+									{/await}
+								</div>
+								<Badge variant="outline">{tasks.length}</Badge>
 							</div>
 							{#each tasks as task}
 								<div
@@ -303,8 +336,24 @@
 									</div>
 
 									<!-- Delete button -->
+									<div class="flex gap-2">
+										<Button
+											variant="outline"
+											class="w-8 h-8 p-0"
+											on:click={() => rejectAiSuggestion(task)}
+										>
+											<Ban class="w-4 h-4 text-red-500" />
+										</Button>
 
-									<!-- Implement delete functionality here -->
+										<!-- Implement delete functionality here -->
+										<Button
+											variant="outline"
+											class="w-8 h-8 p-0"
+											on:click={() => acceptAiSuggestion(task)}
+										>
+											<Check class="w-4 h-4 " />
+										</Button>
+									</div>
 								</div>
 							{/each}
 						</div>
