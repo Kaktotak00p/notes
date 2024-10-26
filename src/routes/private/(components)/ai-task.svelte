@@ -77,7 +77,7 @@
 
 <div class="flex flex-row items-center justify-between w-full p-4 border rounded-md">
 	<!-- Check and task title -->
-	<div class="flex items-center gap-6">
+	<div class="flex items-center w-full gap-6">
 		<!-- Check -->
 		<Checkbox
 			checked={task.completed}
@@ -88,7 +88,7 @@
 		<!-- Title -->
 		<input
 			value={task.task}
-			class="flex-grow bg-transparent border-none outline-none rounded-t-md focus:ring-0"
+			class="flex-grow w-full bg-transparent border-none outline-none rounded-t-md focus:ring-0"
 			on:blur={(event) => taskChanged(task, event)}
 		/>
 	</div>
