@@ -299,26 +299,83 @@
 	}
 
 	function handleKeyDown(event: KeyboardEvent) {
-		if (event.key === 'Enter') {
-			const textarea = event.target as HTMLTextAreaElement;
-			const cursorPosition = textarea.selectionStart;
-			const currentLine = noteContent.substring(0, cursorPosition).split('\n').pop() || '';
+		const textarea = event.target as HTMLTextAreaElement;
+		const cursorPosition = textarea.selectionStart;
+		const currentLine = noteContent.substring(0, cursorPosition).split('\n').pop() || '';
+		const lineStart = currentLine.trim();
 
-			if (currentLine.trim().startsWith('-')) {
+		if (event.key === 'Enter') {
+			if (lineStart.startsWith('-') || lineStart.match(/^\d+\./)) {
 				event.preventDefault();
-				const newLine = '\n- ';
+				let newLine = '\n';
+
+				if (lineStart.startsWith('-')) {
+					newLine += '- ';
+				} else if (lineStart.match(/^\d+\./)) {
+					const num = parseInt(lineStart.match(/^\d+/)?.[0] ?? '0') + 1;
+					newLine += `${num}. `;
+				}
+
 				const newContent =
 					noteContent.substring(0, cursorPosition) +
 					newLine +
 					noteContent.substring(cursorPosition);
-				noteContent = newContent;
-
-				// Set cursor position after the inserted '- '
-				setTimeout(() => {
-					textarea.selectionStart = textarea.selectionEnd = cursorPosition + newLine.length;
-				}, 0);
+				updateContent(newContent, cursorPosition + newLine.length, cursorPosition + newLine.length);
 			}
+		} else if (['[', '(', '{'].includes(event.key)) {
+			console.log('Auto-closing bracket');
+			event.preventDefault();
+			const closingBracket = { '[': ']', '(': ')', '{': '}' }[event.key];
+			const newContent =
+				noteContent.substring(0, cursorPosition) +
+				event.key +
+				closingBracket +
+				noteContent.substring(cursorPosition);
+			updateContent(newContent, cursorPosition + 1, cursorPosition + 1);
+		} else if (event.key === '*') {
+			event.preventDefault();
+			const newContent =
+				noteContent.substring(0, cursorPosition) + '**' + noteContent.substring(cursorPosition);
+			updateContent(newContent, cursorPosition + 1, cursorPosition + 1);
+		} else if (event.key === '_') {
+			event.preventDefault();
+			const newContent =
+				noteContent.substring(0, cursorPosition) + '__' + noteContent.substring(cursorPosition);
+			updateContent(newContent, cursorPosition + 1, cursorPosition + 1);
+		} else if ((event.ctrlKey || event.metaKey) && event.key === 'b') {
+			event.preventDefault();
+			const selectionStart = textarea.selectionStart;
+			const selectionEnd = textarea.selectionEnd;
+			const selectedText = noteContent.substring(selectionStart, selectionEnd);
+			const newContent =
+				noteContent.substring(0, selectionStart) +
+				'**' +
+				selectedText +
+				'**' +
+				noteContent.substring(selectionEnd);
+			updateContent(newContent, selectionStart + 2, selectionEnd + 2);
+		} else if ((event.ctrlKey || event.metaKey) && event.key === 'i') {
+			event.preventDefault();
+			const selectionStart = textarea.selectionStart;
+			const selectionEnd = textarea.selectionEnd;
+			const selectedText = noteContent.substring(selectionStart, selectionEnd);
+			const newContent =
+				noteContent.substring(0, selectionStart) +
+				'_' +
+				selectedText +
+				'_' +
+				noteContent.substring(selectionEnd);
+			updateContent(newContent, selectionStart + 1, selectionEnd + 1);
 		}
+	}
+
+	function updateContent(newContent: string, cursorStart: number, cursorEnd: number) {
+		noteContent = newContent;
+		setTimeout(() => {
+			textareaRef.value = newContent;
+			textareaRef.selectionStart = cursorStart;
+			textareaRef.selectionEnd = cursorEnd;
+		}, 0);
 	}
 </script>
 
@@ -568,13 +625,13 @@
 					{#if isEditing}
 						<textarea
 							bind:this={textareaRef}
-							class="w-full h-full p-2.5 text-base resize-none bg-transparent border-none outline-none focus:ring-0 focus-visible:outline-none prose prose-sm max-w-none"
 							bind:value={noteContent}
 							on:input={handleInput}
 							on:keydown={handleKeyDown}
 							on:blur={() => {
 								saveNote(true);
 							}}
+							class="w-full h-full p-2.5 text-base resize-none bg-transparent border-none outline-none focus:ring-0 focus-visible:outline-none prose prose-sm max-w-none"
 						></textarea>
 					{:else}
 						<button class="flex w-full h-full text-left" on:click={switchToEditing}>
