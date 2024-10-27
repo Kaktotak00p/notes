@@ -17,10 +17,6 @@
 	import { tasks } from '$lib/stores/tasks';
 	import type { Task } from '$lib/supabase/tasksApi';
 
-	$: if ($categories) {
-		console.log('Categories updated:', $categories);
-	}
-
 	export let data: {
 		session: Session;
 		supabase: SupabaseClient;

@@ -5,9 +5,14 @@
 	import SidebarButton from './sidebar-button.svelte';
 	import * as Collapsible from '$lib/components/ui/collapsible';
 	import * as Dialog from '$lib/components/ui/dialog';
+	import * as Popover from '$lib/components/ui/popover';
 	import { Label } from '$lib/components/ui/label';
 	import { toast } from 'svelte-sonner';
 	import type { Category } from '$lib/supabase/categoriesApi';
+	import { notes } from '$lib/stores/notes';
+	import { tasks } from '$lib/stores/tasks';
+	import { selectedNote } from '$lib/stores/notes';
+
 	import {
 		Trash,
 		Menu,
@@ -19,7 +24,8 @@
 		House,
 		Archive,
 		CirclePlus,
-		Check
+		Check,
+		Search
 	} from 'lucide-svelte';
 
 	import { goto } from '$app/navigation';
@@ -36,6 +42,39 @@
 	let showCategories: boolean = false;
 	let newCategoryName = '';
 	let dialogOpen = false;
+	let searchOpen = false;
+
+	let searchQuery = '';
+	let searchResults: Array<{ type: 'note' | 'task'; item: any }> = [];
+
+	$: {
+		if (searchQuery.length > 0) {
+			const filteredNotes = $notes.filter(
+				(note) =>
+					note.fileName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+					note.content.toLowerCase().includes(searchQuery.toLowerCase())
+			);
+			const filteredTasks = $tasks.filter((task) =>
+				task.task.toLowerCase().includes(searchQuery.toLowerCase())
+			);
+			searchResults = [
+				...filteredNotes.map((note) => ({ type: 'note' as const, item: note })),
+				...filteredTasks.map((task) => ({ type: 'task' as const, item: task }))
+			];
+		} else {
+			searchResults = [];
+		}
+	}
+
+	function handleResultClick(result: { type: 'note' | 'task'; item: any }) {
+		if (result.type === 'note') {
+			selectedNote.set(result.item);
+			goto('/private/notes');
+		} else {
+			goto('/private/tasks');
+		}
+		resetSearch();
+	}
 
 	function handleNewCategory(result: { type: string; data?: any }) {
 		console.log(result);
@@ -55,6 +94,12 @@
 			}
 		}
 	}
+
+	function resetSearch() {
+		searchQuery = '';
+		searchResults = [];
+		searchOpen = false;
+	}
 </script>
 
 <div
@@ -69,7 +114,62 @@
 			</div>
 
 			<!-- Search Input -->
-			<Input type="text" placeholder="Search" class="w-full rounded" />
+			<Popover.Root bind:open={searchOpen}>
+				<Popover.Trigger class="w-full">
+					<Button variant="outline" class="justify-start w-full">
+						<Search class="w-4 h-4 mr-2" /> Search</Button
+					></Popover.Trigger
+				>
+				<Popover.Content class="w-[400px]" side="bottom" align="start" sideOffset={5}>
+					<div class="flex flex-col gap-2">
+						<div class="flex flex-row items-center gap-2">
+							<Search class="w-4 h-4 mr-2" />
+							<input
+								type="text"
+								placeholder="Search notes and tasks"
+								class="w-full bg-transparent border-0 focus:ring-0 focus:outline-none placeholder-muted-foreground text-foreground"
+								bind:value={searchQuery}
+							/>
+						</div>
+						{#if searchQuery.length > 0}
+							{#if searchResults.length > 0}
+								<div class="max-h-[300px] overflow-y-auto">
+									{#each searchResults as result}
+										<button
+											class="flex flex-row items-center justify-start w-full gap-2 px-4 py-2 text-left rounded hover:bg-gray-100"
+											on:click={() => handleResultClick(result)}
+										>
+											<p class="text-sm">
+												{result.type === 'note' ? result.item.fileName : result.item.task}
+											</p>
+											<p class="text-xs text-muted-foreground">
+												{result.type === 'note' ? 'Note' : 'Task'}
+											</p>
+										</button>
+									{/each}
+								</div>
+							{:else}
+								<p class="text-sm text-gray-500">No results found</p>
+							{/if}
+						{:else}
+							<div class="max-h-[300px] overflow-y-auto pt-6">
+								<p class="mb-2 font-mono text-xs font-normal text-muted-foreground">GO TO...</p>
+								{#each $notes
+									.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+									.slice(0, 3) as note}
+									<button
+										class="flex flex-row items-center justify-start w-full gap-2 px-4 py-2 text-left rounded hover:bg-gray-100"
+										on:click={() => handleResultClick({ type: 'note', item: note })}
+									>
+										<Notebook class="w-4 h-4 mr-2" />
+										<p class="text-sm">{note.fileName}</p>
+									</button>
+								{/each}
+							</div>
+						{/if}
+					</div>
+				</Popover.Content>
+			</Popover.Root>
 
 			<!-- Add Note or Task List Buttons -->
 
