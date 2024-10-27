@@ -107,6 +107,8 @@
 	}
 
 	function saveNoteDebounced() {
+		// Immediate Autocompletion
+
 		if (saveTimeout) clearTimeout(saveTimeout);
 		saveTimeout = setTimeout(() => {
 			saveNote();
@@ -291,6 +293,33 @@
 			return [];
 		}
 	}
+
+	function handleInput(event: Event) {
+		saveNoteDebounced();
+	}
+
+	function handleKeyDown(event: KeyboardEvent) {
+		if (event.key === 'Enter') {
+			const textarea = event.target as HTMLTextAreaElement;
+			const cursorPosition = textarea.selectionStart;
+			const currentLine = noteContent.substring(0, cursorPosition).split('\n').pop() || '';
+
+			if (currentLine.trim().startsWith('-')) {
+				event.preventDefault();
+				const newLine = '\n- ';
+				const newContent =
+					noteContent.substring(0, cursorPosition) +
+					newLine +
+					noteContent.substring(cursorPosition);
+				noteContent = newContent;
+
+				// Set cursor position after the inserted '- '
+				setTimeout(() => {
+					textarea.selectionStart = textarea.selectionEnd = cursorPosition + newLine.length;
+				}, 0);
+			}
+		}
+	}
 </script>
 
 <Page title={categoryName}>
@@ -461,10 +490,17 @@
 						{/key}
 
 						<div class="flex gap-2">
+							<!-- Save Button (if changes present) -->
+							{#if noteContent !== $selectedNote.content || fileName !== $selectedNote.fileName}
+								<Button variant="outline" on:click={() => saveNote(true)}
+									><Check class="w-4 h-4 mr-2"></Check>Save Changes</Button
+								>
+							{/if}
+
 							<!-- Delete button -->
 							<AlertDialog.Root>
 								<AlertDialog.Trigger>
-									<Button size="icon" variant="ghost"><Trash class="w-4 h-4"></Trash></Button>
+									<Button size="icon" variant="outline"><Trash class="w-4 h-4"></Trash></Button>
 								</AlertDialog.Trigger>
 								<AlertDialog.Content>
 									<AlertDialog.Header>
@@ -534,9 +570,9 @@
 							bind:this={textareaRef}
 							class="w-full h-full p-2.5 text-base resize-none bg-transparent border-none outline-none focus:ring-0 focus-visible:outline-none prose prose-sm max-w-none"
 							bind:value={noteContent}
-							on:input={saveNoteDebounced}
+							on:input={handleInput}
+							on:keydown={handleKeyDown}
 							on:blur={() => {
-								// isEditing = false;
 								saveNote(true);
 							}}
 						></textarea>
