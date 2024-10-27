@@ -18,7 +18,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 1. Only extract actionable tasks; ignore general advice, suggestions, or non-actionable items.
 2. Exclude tasks written in the present continuous tense (e.g., "I am doing...").
 3. Consider actionable items such as "I need to...", "I should...", or "I have to...".
-4. Do not create new tasks; only extract existing ones from the note.
+4. Rephrase the task to be more concise and make it more action-oriented.
+5. Do not create new tasks; only extract existing ones from the note.
+6. Consider tasks in all languages.
 
 Respond with a JSON object that follows this structure:
 {
