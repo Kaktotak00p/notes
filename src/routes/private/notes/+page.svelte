@@ -106,13 +106,6 @@
 		}
 	}
 
-	// Update the note content and apply the markdown parsing in real-time
-	function updateContent(event: any) {
-		noteContent = event.target.value;
-		parsedContent = parseMarkdown(noteContent);
-		saveNoteDebounced();
-	}
-
 	function saveNoteDebounced() {
 		if (saveTimeout) clearTimeout(saveTimeout);
 		saveTimeout = setTimeout(() => {
@@ -198,7 +191,7 @@
 	}
 
 	// Save the currently selected note and switch back to preview mode
-	async function saveNote() {
+	async function saveNote(reload: boolean = false) {
 		if (!$selectedNote) {
 			toast.error('No note selected');
 			return;
@@ -218,7 +211,7 @@
 
 		if (updatedNote) {
 			console.log('Updated contents: ', updatedNote.content, updatedNote.fileName);
-			selectedNote.set(updatedNote);
+			if (reload) selectedNote.set(updatedNote);
 
 			// Extract tasks from the updated note
 			console.log('Extracting tasks from note: ', noteContent);
@@ -242,7 +235,7 @@
 
 	function formatDate(date: string) {
 		const dateObj = new Date(date);
-		return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+		return dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: 'numeric' });
 	}
 
 	// Function to handle category change
@@ -529,7 +522,7 @@
 				<div class="flex flex-col w-full h-full gap-8 px-8 pt-4">
 					<!-- Title -->
 					<input
-						on:blur={saveNote}
+						on:blur={() => saveNote(true)}
 						on:input={saveNoteDebounced}
 						bind:value={fileName}
 						class="text-2xl font-semibold bg-transparent border-none outline-none focus:ring-0"
@@ -543,8 +536,8 @@
 							bind:value={noteContent}
 							on:input={saveNoteDebounced}
 							on:blur={() => {
-								isEditing = false;
-								saveNote();
+								// isEditing = false;
+								saveNote(true);
 							}}
 						></textarea>
 					{:else}

@@ -14,12 +14,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const { noteContent, noteId } = await request.json();
     console.log('Note content: ', noteContent);
 
-    const systemPrompt = `You are an AI assistant that extracts actionable tasks from notes. Identify any sentences or phrases that represent actions the user should take. Only consider meaningful tasks, not simple phrases like or "I want to...". Ignore general advice or suggestions. Ignore tasks that are not actionable. Ignore tasks that are written in the present continuous tense. Do consider possible actionable items, such as "I need to...". Convert these into assertive, task-like statements. Respond with a JSON array of tasks.`;
+    const systemPrompt = `You are an AI assistant that extracts actionable tasks from notes. Your job is to identify sentences or phrases representing specific actions the user needs to take. Follow these guidelines:
+1. Only extract actionable tasks; ignore general advice, suggestions, or non-actionable items.
+2. Exclude tasks written in the present continuous tense (e.g., "I am doing...").
+3. Consider actionable items such as "I need to...", "I should...", or "I have to...".
+4. Do not create new tasks; only extract existing ones from the note.
+
+Respond with a JSON object that follows this structure:
+{
+    "tasks": [ // An array of tasks, each as a string.
+        "Submit the report",
+        "Schedule the meeting"
+    ],
+    "taskCount": 2 // The total number of tasks found.
+}
+
+If no tasks are found, return:
+{
+    "tasks": [],
+    "taskCount": 0
+}`;
+
     const userQuery = `Extract tasks from the following note:\n${noteContent}`;
 
     try {
         const completion = await openai.chat.completions.create({
-            model: "gpt-3.5-turbo",
+            model: "gpt-4o-mini",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userQuery }
@@ -32,28 +52,37 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         let extractedTasks: string[] = [];
 
         try {
-            // First, try to parse the entire content as JSON
-            const parsedResult = JSON.parse(content);
-            extractedTasks = Array.isArray(parsedResult) ? parsedResult : parsedResult.tasks || [];
-        } catch (parseError) {
-            console.error('Failed to parse entire content as JSON:', parseError);
+            // Remove JSON code block markers if present
+            const cleanedContent = content.replace(/^```json\n?|\n?```$/g, '').trim();
+            const parsedResult = JSON.parse(cleanedContent);
 
-            // If that fails, try to extract JSON array from the content
-            const match = content.match(/\[[\s\S]*\]/);
+            if (parsedResult && typeof parsedResult === 'object' && 'tasks' in parsedResult && 'taskCount' in parsedResult) {
+                extractedTasks = parsedResult.tasks;
+                console.log(`Extracted ${parsedResult.taskCount} tasks:`, extractedTasks);
+            } else {
+                throw new Error('Invalid response structure');
+            }
+        } catch (parseError) {
+            console.error('Failed to parse content as expected JSON structure:', parseError);
+
+            // Fallback: try to extract any array of strings from the content
+            const match = content.match(/\[([\s\S]*?)\]/);
             if (match) {
                 try {
-                    extractedTasks = JSON.parse(match[0]);
+                    extractedTasks = JSON.parse(`[${match[1]}]`);
+                    console.log('Extracted tasks from array:', extractedTasks);
                 } catch (arrayParseError) {
                     console.error('Failed to parse extracted array:', arrayParseError);
                 }
             }
 
-            // If JSON parsing fails, fall back to simple string splitting
+            // If all parsing fails, fall back to simple string splitting
             if (extractedTasks.length === 0) {
                 extractedTasks = content
-                    .split('\n')
-                    .map(line => line.trim())
-                    .filter(line => line.length > 0 && !line.startsWith('[') && !line.startsWith(']'));
+                    .split(/\n/)
+                    .map(line => line.replace(/^["-\s]+|["-\s]+$/g, '').trim())
+                    .filter(line => line.length > 0 && !line.match(/^(tasks?|taskCount):?$/i));
+                console.log('Extracted tasks by splitting:', extractedTasks);
             }
         }
 
