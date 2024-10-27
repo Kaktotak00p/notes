@@ -305,15 +305,47 @@
 		const lineStart = currentLine.trim();
 
 		if (event.key === 'Enter') {
-			if (lineStart.startsWith('-') || lineStart.match(/^\d+\./)) {
+			// if (lineStart.startsWith('-') || lineStart.match(/^\d+\./)) {
+			// 	event.preventDefault();
+			// 	let newLine = '\n';
+
+			// 	if (lineStart.startsWith('-')) {
+			// 		newLine += '- ';
+			// 	} else if (lineStart.match(/^\d+\./)) {
+			// 		const num = parseInt(lineStart.match(/^\d+/)?.[0] ?? '0') + 1;
+			// 		newLine += `${num}. `;
+			// 	}
+
+			// 	const newContent =
+			// 		noteContent.substring(0, cursorPosition) +
+			// 		newLine +
+			// 		noteContent.substring(cursorPosition);
+			// 	updateContent(newContent, cursorPosition + newLine.length, cursorPosition + newLine.length);
+			// }
+			if (
+				lineStart.startsWith('-') ||
+				lineStart.match(/^\d+\./) ||
+				lineStart.startsWith('[ ]') ||
+				lineStart.startsWith('[x]')
+			) {
+				console.log('Possible list detected');
 				event.preventDefault();
 				let newLine = '\n';
 
-				if (lineStart.startsWith('-')) {
-					newLine += '- ';
-				} else if (lineStart.match(/^\d+\./)) {
-					const num = parseInt(lineStart.match(/^\d+/)?.[0] ?? '0') + 1;
-					newLine += `${num}. `;
+				// Only end the list if the current line is empty (just the list marker)
+				if (currentLine.trim() === '-' || currentLine.trim() === '- ') {
+					console.log('Empty list item detected, ending list');
+					newLine = '\n';
+				} else {
+					// Continue the list with the appropriate marker
+					if (lineStart.startsWith('- [ ]') || lineStart.startsWith('- [x]')) {
+						newLine += '- [ ] ';
+					} else if (lineStart.startsWith('-')) {
+						newLine += '- ';
+					} else if (lineStart.match(/^\d+\./)) {
+						const num = parseInt(lineStart.match(/^\d+/)?.[0] ?? '0') + 1;
+						newLine += `${num}. `;
+					}
 				}
 
 				const newContent =
@@ -321,6 +353,13 @@
 					newLine +
 					noteContent.substring(cursorPosition);
 				updateContent(newContent, cursorPosition + newLine.length, cursorPosition + newLine.length);
+
+				console.log('Debug: lineStart:', lineStart);
+				console.log('Debug: currentLine:', currentLine);
+				console.log('Debug: newLine:', newLine);
+				console.log('Debug: newContent:', newContent);
+			} else {
+				console.log('No list detected');
 			}
 		} else if (['[', '(', '{'].includes(event.key)) {
 			console.log('Auto-closing bracket');
