@@ -120,7 +120,7 @@
 			<!-- Search Input -->
 			<Popover.Root bind:open={searchOpen}>
 				<Popover.Trigger class="w-full">
-					<Button variant="outline" class="justify-start w-full">
+					<Button variant="outline" class="justify-start w-full hover:cursor-text">
 						<Search class="w-4 h-4 mr-2" /> Search</Button
 					></Popover.Trigger
 				>

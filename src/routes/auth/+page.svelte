@@ -52,6 +52,7 @@
 				};
 			}}
 		>
+			<Input type="text" placeholder="Name" name="name" class="input-field" />
 			<Input type="email" placeholder="Email" name="email" class="input-field" />
 			<Input type="password" placeholder="Password" name="password" class="input-field" />
 			<Button type="submit" class="w-full bg-primary">Sign up</Button>
