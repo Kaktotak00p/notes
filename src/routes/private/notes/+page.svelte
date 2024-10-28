@@ -42,6 +42,9 @@
 	let newCategoryName: string = '';
 	let saveTimeout: ReturnType<typeof setTimeout> | null = null;
 
+	// Track the previous note ID to detect actual note changes
+	let previousNoteId: string | null = null;
+
 	// Get the categoryid from the URL
 	$: categoryId = $page.url.searchParams.get('categoryid');
 	$: categoryName =
@@ -78,8 +81,9 @@
 	$: console.log('Update in notes: ', $notes.length);
 
 	// Update content when the selected note changes
-	$: if ($selectedNote) {
-		console.log('Changed selected: ', $selectedNote?.fileName, $selectedNote?.content);
+	$: if ($selectedNote && $selectedNote.id !== previousNoteId) {
+		console.log('Changed selected note: ', $selectedNote?.fileName);
+		previousNoteId = $selectedNote.id;
 		loadNoteContent($selectedNote);
 	}
 
@@ -108,12 +112,10 @@
 	}
 
 	function saveNoteDebounced() {
-		// Immediate Autocompletion
-
 		if (saveTimeout) clearTimeout(saveTimeout);
 		saveTimeout = setTimeout(() => {
-			saveNote();
-		}, 1000); // Save after 1 second of inactivity
+			saveNote(false); // Pass false to prevent reloading/resetting the note
+		}, 2000);
 	}
 
 	// Add a new note
@@ -141,17 +143,18 @@
 	}
 
 	// Load the selected note content
-	async function loadNoteContent(note: notesApi.Note | null) {
+	async function loadNoteContent(note: notesApi.Note | null, editing: boolean = false) {
+		console.log('Loading note content: ', note?.fileName);
 		if (note) {
 			noteContent = note.content;
 			parsedContent = parseMarkdown(noteContent);
 			fileName = note.fileName;
-			isEditing = false;
 		} else {
 			parsedContent = '';
 			noteContent = '';
 			fileName = '';
 		}
+		isEditing = editing;
 	}
 
 	async function deleteCategory(id: string) {
@@ -192,11 +195,11 @@
 
 		if ($selectedNote.content === noteContent && $selectedNote.fileName === fileName) {
 			console.log('No changes detected, skipping save');
-			if (reload) selectedNote.set($selectedNote);
+			selectedNote.set($selectedNote);
+			if (reload) loadNoteContent($selectedNote, false);
 			return;
 		}
 
-		console.log('New contents: ', noteContent, fileName);
 		const updatedNote = await notesApi.updateNote(data.supabase, {
 			...$selectedNote,
 			content: noteContent,
@@ -204,11 +207,8 @@
 		});
 
 		if (updatedNote) {
-			console.log('Updated contents: ', updatedNote.content, updatedNote.fileName);
-			if (reload) selectedNote.set(updatedNote);
-
-			// Extract tasks from the updated note
-			console.log('Extracting tasks from note: ', noteContent);
+			selectedNote.set(updatedNote);
+			if (reload) loadNoteContent(updatedNote, false);
 			await extractTasksFromNote(noteContent, updatedNote.id);
 		} else {
 			toast.error('Error saving note');
@@ -284,10 +284,6 @@
 			toast.error('An unexpected error occurred. Please try again.');
 			return [];
 		}
-	}
-
-	function handleInput(event: Event) {
-		saveNoteDebounced();
 	}
 </script>
 
@@ -539,7 +535,7 @@
 						bind:value={noteContent}
 						bind:isEditing
 						bind:parsedContent
-						onInput={handleInput}
+						onInput={saveNoteDebounced}
 						onBlur={() => {
 							saveNote(true);
 						}}

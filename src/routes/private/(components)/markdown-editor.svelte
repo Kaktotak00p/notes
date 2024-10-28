@@ -320,7 +320,7 @@
 			on:input={onInput}
 			on:keydown={handleKeyDown}
 			on:blur={onBlur}
-			class="w-full h-full p-2.5 text-base resize-none bg-transparent border-none outline-none focus:ring-0 focus-visible:outline-none prose prose-sm max-w-none"
+			class="w-full h-full p-2.5 text-base resize-none bg-transparent border-none outline-none focus:ring-0 focus-visible:outline-none prose prose-sm max-w-none pb-24"
 		></textarea>
 
 		<div
