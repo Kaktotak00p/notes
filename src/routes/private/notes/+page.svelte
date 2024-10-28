@@ -25,6 +25,7 @@
 	import { notes } from '$lib/stores/notes';
 	import { tasks } from '$lib/stores/tasks';
 	import { AiTask, Task } from '../(components)';
+	import { MarkdownEditor } from '../(components)';
 
 	export let data: {
 		session: Session;
@@ -139,16 +140,6 @@
 		return marked(content) as string;
 	}
 
-	// Switch to editing mode when the user interacts with the preview
-	function switchToEditing() {
-		isEditing = true;
-
-		// After switching to editing mode, focus on the textarea
-		setTimeout(() => {
-			textareaRef?.focus();
-		}, 0);
-	}
-
 	// Load the selected note content
 	async function loadNoteContent(note: notesApi.Note | null) {
 		if (note) {
@@ -201,6 +192,7 @@
 
 		if ($selectedNote.content === noteContent && $selectedNote.fileName === fileName) {
 			console.log('No changes detected, skipping save');
+			if (reload) selectedNote.set($selectedNote);
 			return;
 		}
 
@@ -296,133 +288,6 @@
 
 	function handleInput(event: Event) {
 		saveNoteDebounced();
-	}
-
-	function handleKeyDown(event: KeyboardEvent) {
-		const textarea = event.target as HTMLTextAreaElement;
-		const cursorPosition = textarea.selectionStart;
-		const currentLine = noteContent.substring(0, cursorPosition).split('\n').pop() || '';
-		const lineStart = currentLine.trim();
-
-		if (event.key === 'Enter') {
-			// if (lineStart.startsWith('-') || lineStart.match(/^\d+\./)) {
-			// 	event.preventDefault();
-			// 	let newLine = '\n';
-
-			// 	if (lineStart.startsWith('-')) {
-			// 		newLine += '- ';
-			// 	} else if (lineStart.match(/^\d+\./)) {
-			// 		const num = parseInt(lineStart.match(/^\d+/)?.[0] ?? '0') + 1;
-			// 		newLine += `${num}. `;
-			// 	}
-
-			// 	const newContent =
-			// 		noteContent.substring(0, cursorPosition) +
-			// 		newLine +
-			// 		noteContent.substring(cursorPosition);
-			// 	updateContent(newContent, cursorPosition + newLine.length, cursorPosition + newLine.length);
-			// }
-			if (
-				lineStart.startsWith('-') ||
-				lineStart.match(/^\d+\./) ||
-				lineStart.startsWith('[ ]') ||
-				lineStart.startsWith('[x]')
-			) {
-				event.preventDefault();
-				// Check if the line is empty (just the list marker or checkbox)
-				if (
-					currentLine.trim() === '-' ||
-					currentLine.trim() === '- ' ||
-					currentLine.trim() === '- [ ]' ||
-					currentLine.trim() === '- [x]'
-				) {
-					console.log('Empty list item detected, removing it');
-					// Remove the empty list item by excluding it from the content
-					const contentBeforeLine = noteContent.substring(0, cursorPosition - currentLine.length);
-					const contentAfterLine = noteContent.substring(cursorPosition);
-					const newContent = contentBeforeLine + '\n' + contentAfterLine;
-					updateContent(
-						newContent,
-						cursorPosition - currentLine.length,
-						cursorPosition - currentLine.length
-					);
-				} else {
-					// Continue the list with the appropriate marker
-					let newLine = '\n';
-					if (lineStart.startsWith('- [ ]') || lineStart.startsWith('- [x]')) {
-						newLine += '- [ ] ';
-					} else if (lineStart.startsWith('-')) {
-						newLine += '- ';
-					} else if (lineStart.match(/^\d+\./)) {
-						const num = parseInt(lineStart.match(/^\d+/)?.[0] ?? '0') + 1;
-						newLine += `${num}. `;
-					}
-
-					const newContent =
-						noteContent.substring(0, cursorPosition) +
-						newLine +
-						noteContent.substring(cursorPosition);
-					updateContent(
-						newContent,
-						cursorPosition + newLine.length,
-						cursorPosition + newLine.length
-					);
-				}
-			}
-		} else if (['[', '(', '{'].includes(event.key)) {
-			console.log('Auto-closing bracket');
-			event.preventDefault();
-			const closingBracket = { '[': ']', '(': ')', '{': '}' }[event.key];
-			const newContent =
-				noteContent.substring(0, cursorPosition) +
-				event.key +
-				closingBracket +
-				noteContent.substring(cursorPosition);
-			updateContent(newContent, cursorPosition + 1, cursorPosition + 1);
-		} else if (event.key === '*') {
-			event.preventDefault();
-			const newContent =
-				noteContent.substring(0, cursorPosition) + '**' + noteContent.substring(cursorPosition);
-			updateContent(newContent, cursorPosition + 1, cursorPosition + 1);
-		} else if (event.key === '_') {
-			event.preventDefault();
-			const newContent =
-				noteContent.substring(0, cursorPosition) + '__' + noteContent.substring(cursorPosition);
-			updateContent(newContent, cursorPosition + 1, cursorPosition + 1);
-		} else if ((event.ctrlKey || event.metaKey) && event.key === 'b') {
-			event.preventDefault();
-			const selectionStart = textarea.selectionStart;
-			const selectionEnd = textarea.selectionEnd;
-			const selectedText = noteContent.substring(selectionStart, selectionEnd);
-			const newContent =
-				noteContent.substring(0, selectionStart) +
-				'**' +
-				selectedText +
-				'**' +
-				noteContent.substring(selectionEnd);
-			updateContent(newContent, selectionStart + 2, selectionEnd + 2);
-		} else if ((event.ctrlKey || event.metaKey) && event.key === 'i') {
-			event.preventDefault();
-			const selectionStart = textarea.selectionStart;
-			const selectionEnd = textarea.selectionEnd;
-			const selectedText = noteContent.substring(selectionStart, selectionEnd);
-			const newContent =
-				noteContent.substring(0, selectionStart) +
-				'_' +
-				selectedText +
-				'_' +
-				noteContent.substring(selectionEnd);
-			updateContent(newContent, selectionStart + 1, selectionEnd + 1);
-		}
-	}
-
-	function updateContent(newContent: string, cursorStart: number, cursorEnd: number) {
-		noteContent = newContent;
-		setTimeout(() => {
-			textareaRef.value = newContent;
-			textareaRef.selectionStart = cursorStart;
-			textareaRef.selectionEnd = cursorEnd;
-		}, 0);
 	}
 </script>
 
@@ -669,30 +534,16 @@
 					/>
 
 					<!-- Text area -->
-					{#if isEditing}
-						<textarea
-							bind:this={textareaRef}
-							bind:value={noteContent}
-							on:input={handleInput}
-							on:keydown={handleKeyDown}
-							on:blur={() => {
-								saveNote(true);
-							}}
-							class="w-full h-full p-2.5 text-base resize-none bg-transparent border-none outline-none focus:ring-0 focus-visible:outline-none prose prose-sm max-w-none"
-						></textarea>
-					{:else}
-						<button class="flex w-full h-full text-left" on:click={switchToEditing}>
-							<div
-								class="flex flex-col w-full h-full p-2.5 text-base prose prose-sm max-w-none overflow-y-auto"
-							>
-								<div
-									class="note-preview [&>h1]:text-2xl [&>h1]:font-bold [&>h1]:mb-2.5 [&>h2]:text-xl [&>h2]:font-bold [&>h2]:mb-2 [&>ul]:list-disc [&>ul]:ml-5 [&>ol]:list-decimal [&>ol]:ml-5 [&>img]:max-w-full [&>img]:h-auto [&>img]:my-2.5 [&>p]:mb-4 [&>p]:whitespace-pre-line"
-								>
-									{@html parsedContent}
-								</div>
-							</div>
-						</button>
-					{/if}
+					<MarkdownEditor
+						{textareaRef}
+						bind:value={noteContent}
+						bind:isEditing
+						bind:parsedContent
+						onInput={handleInput}
+						onBlur={() => {
+							saveNote(true);
+						}}
+					/>
 				</div>
 			</div>
 		{/if}
