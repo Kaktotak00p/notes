@@ -28,15 +28,9 @@
 	}
 
 	// AI panel state
-	let showAiPanel = false;
 	let aiInputText = '';
 	let aiResponse: AiResponse | undefined = undefined;
 	let isQuerying = false;
-
-	// Ui state
-	let newNoteName = '';
-	let newTaskName = '';
-	let sidebarOpen = false;
 
 	$: console.log('Categories: ', $categories);
 
@@ -346,7 +340,9 @@
 	}
 </script>
 
-<div class="fixed flex flex-row w-screen h-screen p-2 overflow-y-hidden bg-background">
+<div
+	class="fixed flex flex-row w-screen h-screen p-2 overflow-y-hidden bg-gradient-to-tr from-primary/10 via-background to-orange-200/20"
+>
 	<!-- Greater Sidebar -->
 	<div class="flex flex-col h-full w-fit">
 		<!-- Persistent Sidebar -->
