@@ -283,7 +283,7 @@
 		></textarea>
 
 		<div
-			class="absolute left-0 right-0 flex items-center justify-between w-full gap-2 p-2 border rounded-md bottom-8 bg-background text-muted-foreground"
+			class="absolute flex items-center gap-4 p-2 -translate-x-1/2 border rounded-md left-1/2 bottom-8 bg-background text-muted-foreground w-fit"
 			role="toolbar"
 			aria-label="Markdown editor toolbar"
 			tabindex={0}

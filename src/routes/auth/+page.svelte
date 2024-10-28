@@ -24,6 +24,7 @@
 				window.location.reload();
 			} else {
 				error = result.data?.error || 'An error occurred';
+				console.error(error);
 				toast.error(error);
 			}
 		}
