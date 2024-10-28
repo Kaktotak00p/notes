@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { List, ListTodo, ListOrdered, Heading1, Heading2, Code } from 'lucide-svelte';
+	import { List, ListTodo, ListOrdered, Heading1, Heading2, Code, ImagePlus } from 'lucide-svelte';
 
 	export let value: string;
 	export let isEditing: boolean;
@@ -162,6 +162,47 @@
 		textareaRef.setSelectionRange(selectionStart + offset, selectionEnd + offset);
 	}
 
+	async function addImage() {
+		// Store cursor position before opening file dialog
+		const cursorPosition = textareaRef.selectionStart;
+		const currentLine = value.substring(0, cursorPosition).split('\n').pop() || '';
+		const prefix = currentLine.length > 0 ? '\n' : '';
+
+		// Create a file input element
+		const input = document.createElement('input');
+		input.type = 'file';
+		input.accept = 'image/*';
+
+		// Handle file selection
+		input.onchange = (e) => {
+			const file = (e.target as HTMLInputElement).files?.[0];
+			if (file) {
+				const reader = new FileReader();
+				reader.onload = (e) => {
+					const imageMarkdown = `![${file.name}](${e.target?.result})`;
+					const newContent =
+						value.substring(0, cursorPosition) +
+						prefix +
+						imageMarkdown +
+						value.substring(cursorPosition);
+					const offset = prefix.length + imageMarkdown.length;
+					updateContent(newContent, cursorPosition + offset, cursorPosition + offset);
+
+					// Re-enable editing mode and restore focus
+					isEditing = true;
+					setTimeout(() => {
+						textareaRef?.focus();
+						textareaRef?.setSelectionRange(cursorPosition + offset, cursorPosition + offset);
+					}, 0);
+				};
+				reader.readAsDataURL(file);
+			}
+		};
+
+		// Trigger file selection
+		input.click();
+	}
+
 	function handleKeyDown(event: KeyboardEvent) {
 		const textarea = event.target as HTMLTextAreaElement;
 		const cursorPosition = textarea.selectionStart;
@@ -316,6 +357,8 @@
 			>
 
 			<Button variant="ghost" size="icon" on:click={addCodeBlock}><Code class="w-4 h-4" /></Button>
+
+			<Button variant="ghost" size="icon" on:click={addImage}><ImagePlus class="w-4 h-4" /></Button>
 		</div>
 	</div>
 {:else}
