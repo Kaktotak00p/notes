@@ -10,11 +10,13 @@
 	import * as notesApi from '$lib/supabase/notesApi';
 	import * as categoriesApi from '$lib/supabase/categoriesApi';
 	import * as tasksApi from '$lib/supabase/tasksApi';
+	import * as profileApi from '$lib/supabase/profileApi';
 	import type { Note } from '$lib/supabase/notesApi';
 	import type { Category } from '$lib/supabase/categoriesApi';
 	import { categories } from '$lib/stores/categories';
 	import { notes } from '$lib/stores/notes';
 	import { tasks } from '$lib/stores/tasks';
+	import { profile } from '$lib/stores/profile';
 	import type { Task } from '$lib/supabase/tasksApi';
 
 	export let data: {
@@ -261,22 +263,28 @@
 				data.session.user.id
 			);
 			const fetchedTasks = await tasksApi.fetchTasks(data.supabase, data.session.user.id);
+			const fetchedProfile = await profileApi.fetchProfile(data.supabase, data.session.user.id);
 
 			notes.set(fetchedNotes);
 			categories.set(fetchedCategories);
 			tasks.set(fetchedTasks);
+			profile.set(fetchedProfile);
 
 			notesApi.unsubscribeFromNotes(data.supabase);
 			categoriesApi.unsubscribeFromCategories(data.supabase);
 			tasksApi.unsubscribeFromTasks(data.supabase);
 
 			notesApi.subscribeToNotes(data.supabase, data.session.user.id, handleRealtimeUpdate);
+
 			categoriesApi.subscribeToCategories(
 				data.supabase,
 				data.session.user.id,
 				handleCategoryUpdate
 			);
+
 			tasksApi.subscribeToTasks(data.supabase, data.session.user.id, handleTaskUpdate);
+
+			profileApi.subscribeToProfile(data.supabase, data.session.user.id, handleProfileUpdate);
 		})();
 	}
 
@@ -284,7 +292,26 @@
 		notesApi.unsubscribeFromNotes(data.supabase);
 		categoriesApi.unsubscribeFromCategories(data.supabase);
 		tasksApi.unsubscribeFromTasks(data.supabase);
+		profileApi.unsubscribeFromProfile(data.supabase);
 	});
+
+	function handleProfileUpdate(payload: any) {
+		const { eventType, new: newRecord, old: oldRecord } = payload;
+		switch (eventType) {
+			case 'UPDATE':
+				profile.update((currentProfile) =>
+					currentProfile?.id === newRecord.id ? newRecord : currentProfile
+				);
+				break;
+			case 'DELETE':
+				profile.update((currentProfile) =>
+					currentProfile?.id === oldRecord.id ? null : currentProfile
+				);
+				break;
+			default:
+				break;
+		}
+	}
 
 	function handleRealtimeUpdate(payload: any) {
 		const { eventType, new: newRecord, old: oldRecord } = payload;

@@ -10,6 +10,7 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { categories } from '$lib/stores/categories';
 	import { tasks } from '$lib/stores/tasks';
+	import { profile } from '$lib/stores/profile';
 	import Task from './(components)/task.svelte';
 
 	export let data: {
@@ -49,7 +50,7 @@
 	<!-- Header -->
 	<div class="flex flex-col justify-start px-8 py-6">
 		<p class="text-sm text-gray-500">Ready to start your day?</p>
-		<h1 class="text-2xl font-semibold">{data.session.user.email}'s Notes</h1>
+		<h1 class="text-2xl font-semibold">{$profile?.full_name ?? data.session.user.email}'s Notes</h1>
 	</div>
 
 	<!-- Suggested actions -->
