@@ -69,7 +69,11 @@
 	function handleResultClick(result: { type: 'note' | 'task'; item: any }) {
 		if (result.type === 'note') {
 			selectedNote.set(result.item);
-			goto('/private/notes');
+			if (result.item.deleted) {
+				goto('/private/trash');
+			} else {
+				goto('/private/notes');
+			}
 		} else {
 			goto('/private/tasks');
 		}
@@ -145,6 +149,9 @@
 											<p class="text-xs text-muted-foreground">
 												{result.type === 'note' ? 'Note' : 'Task'}
 											</p>
+											<p class="text-xs text-muted-foreground">
+												{result.type === 'note' && result.item.deleted ? '(Deleted)' : ''}
+											</p>
 										</button>
 									{/each}
 								</div>
@@ -155,6 +162,7 @@
 							<div class="max-h-[300px] overflow-y-auto pt-6">
 								<p class="mb-2 font-mono text-xs font-normal text-muted-foreground">GO TO...</p>
 								{#each $notes
+									.filter((note) => !note.deleted)
 									.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
 									.slice(0, 3) as note}
 									<button
