@@ -24,8 +24,8 @@
 	import { selectedNote } from '$lib/stores/notes';
 	import { notes } from '$lib/stores/notes';
 	import { tasks } from '$lib/stores/tasks';
-	import { AiTask, Task } from '../(components)';
-	import { MarkdownEditor } from '../(components)';
+	import { AiTask, Task } from '../../../lib/components/ui/components';
+	import { MarkdownEditor } from '../../../lib/components/ui/components';
 
 	export let data: {
 		session: Session;

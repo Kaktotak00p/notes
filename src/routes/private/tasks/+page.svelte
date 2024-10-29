@@ -12,8 +12,8 @@
 	import { Sparkles, X, Link, Ban, Check } from 'lucide-svelte';
 	import Badge from '$lib/components/ui/badge/badge.svelte';
 	import { toast } from 'svelte-sonner';
-	import { AiTask } from '../(components)';
-	import { Task } from '../(components)';
+	import { AiTask } from '../../../lib/components/ui/components';
+	import { Task } from '../../../lib/components/ui/components';
 
 	export let data: {
 		session: Session;

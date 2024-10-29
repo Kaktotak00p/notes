@@ -60,3 +60,18 @@ export const flyAndScale = (
 		easing: cubicOut
 	};
 };
+
+export const getAvatarUrl = async (supabase: any, path: string | null) => {
+	if (!path) return 'https://robohash.org/robot.png';
+
+	const { data: avatar, error } = await supabase.storage
+		.from('avatars')
+		.download(`${path}`);
+
+	if (error || !avatar) {
+		console.error('Error fetching avatar:', error?.message);
+		return 'https://robohash.org/robot.png';
+	}
+
+	return URL.createObjectURL(avatar);
+};

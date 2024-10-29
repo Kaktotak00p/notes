@@ -2,7 +2,7 @@
 	import { toast } from 'svelte-sonner';
 	import { selectedNote } from '$lib/stores/notes';
 	import Sortable from 'sortablejs';
-	import { Sidebar } from './(components)';
+	import { Sidebar } from '../../lib/components/ui/components';
 	import { type Session, type SupabaseClient } from '@supabase/supabase-js';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -297,6 +297,7 @@
 
 	function handleProfileUpdate(payload: any) {
 		const { eventType, new: newRecord, old: oldRecord } = payload;
+		console.log('PROFILE UPDATED: ', payload);
 		switch (eventType) {
 			case 'UPDATE':
 				profile.update((currentProfile) =>
@@ -377,6 +378,7 @@
 			bind:selectedTab
 			email={data.session.user.email ?? 'No email connected'}
 			categories={$categories}
+			supabase={data.supabase}
 			{addNote}
 			{addTask}
 			{logout}

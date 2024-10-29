@@ -11,7 +11,7 @@
 	import { categories } from '$lib/stores/categories';
 	import { tasks } from '$lib/stores/tasks';
 	import { profile } from '$lib/stores/profile';
-	import Task from './(components)/task.svelte';
+	import Task from '../../lib/components/ui/components/task.svelte';
 
 	export let data: {
 		session: Session;
@@ -128,7 +128,9 @@
 							<!-- Title and contents -->
 							<div class="flex flex-col items-start gap-2">
 								<p class="text-sm font-semibold">{note.fileName}</p>
-								<p class="text-sm text-gray-500">{note.content}</p>
+								<p class="text-sm text-gray-500 break-all text-start">
+									{note.content?.length > 100 ? note.content.slice(0, 100) + '...' : note.content}
+								</p>
 							</div>
 
 							<!-- Date -->

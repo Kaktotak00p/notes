@@ -9,9 +9,13 @@
 	import { Label } from '$lib/components/ui/label';
 	import { toast } from 'svelte-sonner';
 	import type { Category } from '$lib/supabase/categoriesApi';
+	import * as DropdownMenu from '$lib/components/ui/dropdown-menu';
 	import { notes } from '$lib/stores/notes';
 	import { tasks } from '$lib/stores/tasks';
+	import { profile } from '$lib/stores/profile';
 	import { selectedNote } from '$lib/stores/notes';
+	import { getAvatarUrl } from '$lib/utils';
+	import type { SupabaseClient } from '@supabase/supabase-js';
 
 	import {
 		Trash,
@@ -25,7 +29,10 @@
 		Archive,
 		CirclePlus,
 		Check,
-		Search
+		Search,
+		ChevronsUpDown,
+		User,
+		LogOut
 	} from 'lucide-svelte';
 
 	import { goto } from '$app/navigation';
@@ -34,6 +41,7 @@
 	export let email: string;
 	export let selectedTab: string;
 	export let categories: Category[];
+	export let supabase: SupabaseClient;
 
 	export let addNote: (categoryid: string | null) => void;
 	export let addTask: (content: string) => void;
@@ -43,6 +51,7 @@
 	let newCategoryName = '';
 	let dialogOpen = false;
 	let searchOpen = false;
+	let profilePopupOpen = false;
 
 	let searchQuery = '';
 	let searchResults: Array<{ type: 'note' | 'task'; item: any }> = [];
@@ -112,10 +121,75 @@
 	<div class="flex flex-col h-full overflow-hidden">
 		<!-- Header -->
 		<div class="flex flex-col items-start w-full gap-2 px-4 pt-4">
-			<div class="flex flex-col gap-0 mb-4">
-				<h3 class="text-4xl font-bold text-primary">NoteNest</h3>
-				<p class="text-sm text-primary/40">{email}</p>
-			</div>
+			<DropdownMenu.Root bind:open={profilePopupOpen}>
+				<DropdownMenu.Trigger class="w-full">
+					<Button
+						variant="ghost"
+						class="items-center justify-start w-full pl-0 mr-0 hover:cursor-pointer h-fit"
+					>
+						<div class="flex flex-row items-center justify-between w-full gap-2 h-fit">
+							<div class="flex flex-row items-center gap-2">
+								<!-- Profile Avatar -->
+								{#if $profile?.avatar_url}
+									{#await getAvatarUrl(supabase, $profile?.avatar_url)}
+										<div class="flex items-center justify-center bg-gray-200 rounded-full w-9 h-9">
+											<p class="text-sm">{email.slice(0, 2).toUpperCase()}</p>
+										</div>
+									{:then url}
+										<img
+											src={url}
+											alt="Profile"
+											class="object-cover border rounded-full w-9 h-9"
+											on:error={(e) => {
+												if (e.target instanceof HTMLImageElement) {
+													e.target.src = 'https://robohash.org/robot.png';
+												}
+											}}
+										/>
+									{/await}
+								{:else}
+									<div class="flex items-center justify-center bg-gray-200 rounded-full w-9 h-9">
+										<p class="text-sm">{email.slice(0, 2).toUpperCase()}</p>
+									</div>
+								{/if}
+
+								<div class="flex flex-col items-start">
+									<p class="text-sm">{$profile?.full_name}</p>
+									<p class="text-xs text-muted-foreground">{email}</p>
+								</div>
+							</div>
+
+							<ChevronsUpDown class="w-4 h-4" />
+						</div>
+					</Button>
+				</DropdownMenu.Trigger>
+				<DropdownMenu.Content class="w-[300px]" side="bottom" align="start" sideOffset={5}>
+					<DropdownMenu.Group>
+						<DropdownMenu.Label>
+							<Button
+								size="sm"
+								variant="ghost"
+								class="justify-start w-full"
+								on:click={() => {
+									profilePopupOpen = false;
+									goto('/private/settings/profile');
+								}}
+							>
+								<User class="w-4 h-4 mr-2" />
+								Profile
+							</Button>
+						</DropdownMenu.Label>
+						<DropdownMenu.Separator />
+
+						<DropdownMenu.Item>
+							<Button size="sm" variant="ghost" class="justify-start w-full" on:click={logout}>
+								<LogOut class="w-4 h-4 mr-2" />
+								Log Out
+							</Button>
+						</DropdownMenu.Item>
+					</DropdownMenu.Group>
+				</DropdownMenu.Content>
+			</DropdownMenu.Root>
 
 			<!-- Search Input -->
 			<Popover.Root bind:open={searchOpen}>
