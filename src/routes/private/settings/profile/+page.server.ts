@@ -11,6 +11,8 @@ export const actions: Actions = {
             const formData = await request.formData()
             const name = formData.get('name')?.toString()
             const avatar = formData.get('avatar') as File | null
+            const prevAvatarPath = formData.get('prevAvatarPath')?.toString()
+
 
             // Validate name if provided
             if (name) {
@@ -36,7 +38,16 @@ export const actions: Actions = {
 
                 if (uploadError) {
                     return { success: false, error: uploadError.message }
+                } else {
+                    // Delete previous avatar
+                    if (prevAvatarPath) {
+                        const { error: deleteError } = await supabase
+                            .storage
+                            .from('avatars')
+                            .remove([prevAvatarPath])
+                    }
                 }
+
 
                 // Update profile with new avatar URL
                 const { error: avatarUpdateError } = await supabase

@@ -112,6 +112,8 @@
 			<!-- Profile Picture URL -->
 			<input hidden id="avatar" type="url" name="avatar" bind:value={newAvatar} />
 
+			<input hidden id="prevAvatarPath" type="url" name="prevAvatarPath" value={avatarUrl} />
+
 			<!-- Full Name -->
 			<div class="flex flex-col gap-2">
 				<Label for="full-name">Display Name</Label>
